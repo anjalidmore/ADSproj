@@ -106,6 +106,149 @@ def per_capita_distribution(df: pd.DataFrame) -> dict:
     }
 
 
+# ---------------------------------------------------------------- Module 2.2–2.3: remaining syllabus topics
+
+PC_BANDS = [0, 1, 3, 6, 10, np.inf]
+PC_LABELS = ["< 1 t", "1–3 t", "3–6 t", "6–10 t", "10 t and above"]
+
+
+def years_of_decline(df: pd.DataFrame, start: int = B, end: int = Y) -> pd.Series:
+    """Discrete variable: in how many of the years start+1 … end did a country's CO2 fall?
+
+    Only countries with positive CO2 in every year of the window are counted.
+    """
+    c = data.countries(df)
+    w = c[c["year"].between(start, end)].pivot(index="country", columns="year", values="co2").dropna()
+    w = w[(w > 0).all(axis=1)]
+    return (w.diff(axis=1).iloc[:, 1:] < 0).sum(axis=1).rename("years_of_decline")
+
+
+def dominant_source(df: pd.DataFrame, year: int = Y) -> pd.Series:
+    """Qualitative attribute: each country's largest reported fossil/industry CO2 source."""
+    c = data.countries(df)
+    f = c[c["year"] == year].set_index("country")[config.FUEL_COLUMNS].dropna(how="all")
+    return f.idxmax(axis=1).str.replace("_co2", "").str.replace("other_industry", "other industry").rename("dominant_source")
+
+
+def classification_and_tabulation(df: pd.DataFrame) -> dict:
+    """Module 2.2: the four types of classification and simple / two-way / higher-order tables."""
+    cs = data.cross_section(df, Y, ["co2", "co2_per_capita"]).dropna(subset=["continent"])
+    cs["band"] = pd.cut(cs["co2_per_capita"], PC_BANDS, right=False, labels=PC_LABELS)
+    fell = data.paired_years(df, "co2", B, Y)
+    fell["fell_since_base"] = np.where(fell[f"co2_{Y}"] < fell[f"co2_{B}"], "Fell", "Rose or same")
+    cs = cs.merge(fell[["country", "fell_since_base"]], on="country", how="left")
+    cs = cs.merge(dominant_source(df).reset_index(), on="country", how="left")
+
+    world_total = data.world_series(df).loc[Y]
+    geo = cs.groupby("continent").agg(countries=("country", "size"), co2_mt=("co2", "sum"), population=("population", "sum"))
+    geo["share_of_world_pct"] = geo["co2_mt"] / world_total * 100
+    geo["co2_per_person_t"] = geo["co2_mt"] * 1e6 / geo["population"]
+    geo = geo.sort_values("co2_mt", ascending=False)
+
+    w = data.world_series(df).loc[1950:Y]
+    decade = (w.index // 10 * 10)
+    chrono = w.groupby(decade).agg(years="size", total_mt="sum", mean_annual_mt="mean")
+    chrono.index = [f"{d}s" if d + 9 <= Y else f"{d}–{Y}" for d in chrono.index]
+    chrono.index.name = "period"
+    chrono["change_in_mean_pct"] = chrono["mean_annual_mt"].pct_change() * 100
+
+    two_fold = cs["fell_since_base"].value_counts().rename_axis("attribute").rename("countries").to_frame()
+    manifold = pd.crosstab([cs["continent"], cs["fell_since_base"]], cs["dominant_source"], margins=True, margins_name="Total")
+
+    simple = cs["band"].value_counts().reindex(PC_LABELS).rename_axis("CO₂ per person").rename("countries").to_frame()
+    simple.loc["Total"] = simple["countries"].sum()
+    two_way = pd.crosstab(cs["continent"], cs["band"], margins=True, margins_name="Total")
+    higher = pd.crosstab([cs["continent"], cs["fell_since_base"]], cs["band"], margins=True, margins_name="Total")
+    return {"data": cs, "geographical": geo, "chronological": chrono, "two_fold": two_fold, "manifold": manifold,
+            "quantitative": simple, "simple_table": simple, "two_way_table": two_way, "higher_order_table": higher,
+            "n": int(len(cs))}
+
+
+def univariate_extras(df: pd.DataFrame) -> dict:
+    """Module 2.3 pieces beyond the summary table: discrete series, cumulative frequencies & ogive,
+    open-end classes, moments, empirical mode, correcting incorrect items, inclusive classes."""
+    x = data.cross_section(df, Y, ["co2_per_capita"])["co2_per_capita"]
+    t = ds.frequency_table(x)
+
+    yod = years_of_decline(df)
+    dt = ds.discrete_table(yod)
+    dstd = ds.discrete_std(dt)
+    # Inclusive classes 0–3, 4–7, … of the discrete count, converted to exclusive (−0.5 / +0.5).
+    lo_inc = np.arange(0, int(yod.max()) + 1, 4)
+    hi_inc = lo_inc + 3
+    f_inc = [int(((yod >= lo) & (yod <= hi)).sum()) for lo, hi in zip(lo_inc, hi_inc)]
+    lo_ex, hi_ex = ds.inclusive_to_exclusive(lo_inc, hi_inc)
+    t_inc = ds.class_table(lo_ex, hi_ex, f_inc)
+
+    open_from = 15.0
+    t_open = ds.close_top_classes(t, open_from)
+    # Incorrect items: aggregates (regions, income groups, World…) wrongly averaged in with countries.
+    all_rows = df[(df["year"] == Y) & df["co2_per_capita"].notna()]
+    wrong = all_rows.loc[all_rows["entity_type"] != "country", "co2_per_capita"]
+    incorrect_mean = float(all_rows["co2_per_capita"].mean())
+    corr = ds.corrected_mean(len(all_rows), incorrect_mean, wrong=wrong.tolist())
+
+    gm = ds.grouped_mode(t)
+    return {
+        "discrete_table": dt, "discrete_summary": ds.discrete_summary(dt),
+        "discrete_std_methods": dstd, "discrete_variable": f"years with falling CO₂, {B + 1}–{Y}",
+        "inclusive_table": pd.DataFrame({"inclusive_class": [f"{a}–{b}" for a, b in zip(lo_inc, hi_inc)],
+                                         "exclusive_class": [f"{a:g}–{b:g}" for a, b in zip(lo_ex, hi_ex)], "f": f_inc}),
+        "inclusive_grouped_median": ds.grouped_median(t_inc),
+        "cumulative": ds.cumulative_frequencies(t), "freq_table": t,
+        "ogive_median": ds.ogive_intersection(t)[0], "formula_median": ds.grouped_median(t),
+        "ogive_q1": ds.ogive_value(t, t["f"].sum() / 4), "ogive_q3": ds.ogive_value(t, 3 * t["f"].sum() / 4),
+        "open_table": t_open, "open_from": open_from,
+        "open_mean": ds.open_end_mean(t_open), "closed_grouped_mean": ds.grouped_mean(t)["direct"],
+        "open_median": ds.grouped_median(t_open), "actual_mean": float(x.mean()),
+        "moments": ds.moments(x),
+        "empirical_mode": ds.empirical_mode(x), "grouped_mode": gm["mode"],
+        "correction": {**corr, "n_all": int(len(all_rows)), "n_wrong": int(len(wrong)), "incorrect_mean": incorrect_mean},
+    }
+
+
+def correlation_forms(df: pd.DataFrame) -> dict:
+    """Module 2.4 'types of correlation': positive, negative, none, non-linear; simple, partial, multiple."""
+    cs = data.cross_section(df, G, ["co2_per_capita", "gdp_per_capita", "energy_per_capita", "co2_per_unit_energy"])
+    cs = cs[(cs[["co2_per_capita", "gdp_per_capita", "energy_per_capita", "co2_per_unit_energy"]] > 0).all(axis=1)]
+    lg = {c: np.log10(cs[c]) for c in ["co2_per_capita", "gdp_per_capita", "energy_per_capita", "co2_per_unit_energy"]}
+    pop = data.cross_section(df, Y, ["co2_per_capita"])
+    uk = data.countries(df)
+    uk = uk[(uk["country"] == "United Kingdom") & uk["year"].between(1990, Y)].dropna(subset=["co2"])
+    y, x1, x2 = lg["co2_per_capita"], lg["gdp_per_capita"], lg["energy_per_capita"]
+    return {
+        "n": int(len(cs)), "data": cs.assign(**{f"log_{k}": v for k, v in lg.items()}), "uk": uk[["year", "co2"]],
+        "pop_data": pop,
+        "positive": cr.analyse(x1, y),
+        "negative_cross_section": cr.analyse(x1, lg["co2_per_unit_energy"]),
+        "negative_time": cr.analyse(uk["year"], uk["co2"]),
+        "none": cr.analyse(pop["population"], pop["co2_per_capita"]),
+        "nonlinear_raw": cr.analyse(cs["gdp_per_capita"], cs["co2_per_capita"]),
+        "partial_gdp_given_energy": cr.partial_correlation(y, x1, x2),
+        "partial_energy_given_gdp": cr.partial_correlation(y, x2, x1),
+        "multiple_R": cr.multiple_correlation(y, x1, x2),
+        "simple_r_gdp": cr.pearson_actual_mean(y, x1), "simple_r_energy": cr.pearson_actual_mean(y, x2),
+    }
+
+
+def diagram_data(df: pd.DataFrame) -> dict:
+    """Tables behind the Module 2 one- and two-dimensional diagrams."""
+    c = data.countries(df).dropna(subset=["continent"])
+    yrs = [1990, B, Y]
+    multi = c[c["year"].isin(yrs)].groupby(["continent", "year"])["co2"].sum().unstack("year")
+    fuel = c[c["year"] == Y].groupby("continent")[config.FUEL_COLUMNS].sum()
+    fuel.columns = [k.replace("_co2", "").replace("other_industry", "other industry") for k in fuel.columns]
+    fuel_pct = fuel.div(fuel.sum(axis=1), axis=0) * 100
+    top = data.cross_section(df, Y, ["co2", "co2_per_capita"]).nlargest(10, "co2")
+    pc_top = data.cross_section(df, Y, ["co2_per_capita"]).nlargest(10, "co2_per_capita")
+    w = data.world_series(df).loc[2000:]
+    return {"multiple_bar": multi, "fuel_mt": fuel, "fuel_pct": fuel_pct,
+            "rectangles": top[["country", "population", "co2_per_capita", "co2"]],
+            "squares": top.head(5)[["country", "co2"]].assign(side=lambda d: np.sqrt(d["co2"]),
+                                                                radius=lambda d: np.sqrt(d["co2"] / np.pi)),
+            "per_capita_top": pc_top[["country", "co2_per_capita"]], "world_recent": w}
+
+
 # ---------------------------------------------------------------- Module 2.4: correlation
 
 CORR_COLS = ["co2_per_capita", "gdp_per_capita", "energy_per_capita", "population", "co2"]
@@ -234,3 +377,22 @@ def time_series(df: pd.DataFrame) -> dict:
 def quality_summary(df: pd.DataFrame) -> dict:
     from . import quality
     return quality.report(data.load_raw(), df)
+
+
+def compute_all(df: pd.DataFrame) -> dict:
+    return {
+        "quality": quality_summary(df),
+        "global_trend": global_trend(df),
+        "top": top_emitters(df),
+        "changes": changes(df),
+        "distribution": per_capita_distribution(df),
+        "classification": classification_and_tabulation(df),
+        "univariate_extras": univariate_extras(df),
+        "correlation_forms": correlation_forms(df),
+        "diagrams": diagram_data(df),
+        "relationships": relationships(df),
+        "inference": inference(df),
+        "regression": regression(df),
+        "lof": outliers_lof(df),
+        "time_series": time_series(df),
+    }

@@ -131,3 +131,9 @@ def test_average_and_ma_forecast_metrics():  # Module 6 slides 47–50
     assert m3["MAE"] == pytest.approx(2.67, abs=0.01)
     assert m3["MAPE"] == pytest.approx(10.60, abs=0.01)
     assert m3["MASE"] == pytest.approx(1.14, abs=0.01)
+
+
+def test_poisson_pmf_hospital_example():  # Module 3 handwritten notes: μ = 4 calls
+    assert inf.poisson_pmf([0, 1, 2], 4).sum() == pytest.approx(0.238, abs=0.001)
+    assert inf.poisson_pmf(3, 4) == pytest.approx(0.195, abs=0.001)
+    assert np.isfinite(inf.poisson_pmf(60, 12.0))

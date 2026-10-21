@@ -47,8 +47,9 @@ def empirical_rule(x) -> pd.DataFrame:
 
 def poisson_pmf(k, lam: float):
     """P(X = x) = e^(−μ) μ^x / x!"""
-    k = np.asarray(k)
-    return np.exp(-lam) * lam ** k / np.vectorize(math.factorial)(k)
+    # Evaluated as exp(x·ln μ − μ − ln x!) so large x (e.g. 42!) does not overflow.
+    k = np.asarray(k, dtype=float)
+    return np.exp(k * math.log(lam) - lam - np.vectorize(math.lgamma)(k + 1))
 
 
 def poisson_check(counts) -> dict:

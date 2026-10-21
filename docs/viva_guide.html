@@ -1,0 +1,493 @@
+<title>CO₂ Analytics Viva Guide</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;700;800&family=Literata:opsz,wght@7..72,400;7..72,600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: study handbook. Sticky contents rail on wide screens, one reading column (~68ch), Q&A bank with a filter. */
+:root {
+  --bg: #f3f5f1;
+  --surface: #fbfcf9;
+  --ink: #18211c;
+  --muted: #56615a;
+  --line: #d7ddd5;
+  --accent: #2b6a4c;
+  --accent-soft: #dcebe1;
+  --warn: #8a5a12;
+  --warn-soft: #f6ead2;
+  --code-bg: #e9eee8;
+  --display: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --body: "Literata", Georgia, "Times New Roman", serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121915; --surface: #19221d; --ink: #e5ece6; --muted: #a3b0a7; --line: #2c3a32;
+    --accent: #7fc49e; --accent-soft: #1f3a2c; --warn: #e2b766; --warn-soft: #3a2f19; --code-bg: #1f2a24;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121915; --surface: #19221d; --ink: #e5ece6; --muted: #a3b0a7; --line: #2c3a32;
+  --accent: #7fc49e; --accent-soft: #1f3a2c; --warn: #e2b766; --warn-soft: #3a2f19; --code-bg: #1f2a24;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--body); font-size: 17px; line-height: 1.62;
+}
+.wrap {
+  max-width: 1180px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 80px;
+  display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 56px;
+}
+@media (max-width: 900px) { .wrap { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-block: 24px 64px; } }
+
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; font-family: var(--display); font-size: 14px; }
+nav.toc p { font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; }
+nav.toc a { display: block; padding: 5px 10px; border-radius: 6px; color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { background: var(--accent-soft); outline: none; }
+@media (max-width: 900px) {
+  nav.toc { position: static; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  nav.toc ol { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+
+main { min-width: 0; display: grid; gap: 64px; }
+section { display: grid; gap: 18px; scroll-margin-top: 24px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; color: var(--ink); }
+h1 { font-size: clamp(34px, 5vw, 54px); font-weight: 800; line-height: 1.05; letter-spacing: -.02em; }
+h2 { font-size: clamp(26px, 3vw, 32px); font-weight: 800; letter-spacing: -.01em; }
+h3 { font-size: 20px; font-weight: 700; }
+p, ul, ol { margin: 0; max-width: 68ch; }
+ul, ol { padding-left: 1.2em; display: grid; gap: 6px; }
+a { color: var(--accent); }
+.eyebrow { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+.lede { font-size: 19px; color: var(--muted); max-width: 64ch; }
+code, .mono { font-family: var(--mono); font-size: .86em; }
+code { background: var(--code-bg); padding: .08em .35em; border-radius: 4px; }
+pre { margin: 0; background: var(--code-bg); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font-family: var(--mono); font-size: 14px; line-height: 1.55; }
+pre code { background: none; padding: 0; }
+.formula { font-family: var(--mono); font-size: 14.5px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; overflow-x: auto; white-space: nowrap; }
+
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+.fact { border-top: 3px solid var(--accent); padding-top: 10px; }
+.fact b { display: block; font-family: var(--display); font-size: 30px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.fact span { font-size: 14px; color: var(--muted); }
+
+.flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; font-family: var(--display); font-size: 14px; }
+.flow .node { flex: 1 1 150px; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.flow .node b { display: block; font-size: 15px; }
+.flow .node span { color: var(--muted); font-size: 13px; }
+.flow .arrow { align-self: center; color: var(--accent); font-weight: 800; }
+@media (max-width: 600px) { .flow .arrow { display: none; } }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--display); font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: none; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.note { background: var(--accent-soft); border-radius: 8px; padding: 12px 16px; max-width: 68ch; }
+.warn { background: var(--warn-soft); border-radius: 8px; padding: 12px 16px; max-width: 68ch; }
+.warn b { color: var(--warn); }
+
+.module { border-top: 1px solid var(--line); padding-top: 18px; display: grid; gap: 12px; }
+.module h3 span { color: var(--accent); font-weight: 800; margin-right: 6px; }
+
+.qa-tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-family: var(--display); font-size: 14px; }
+.qa-tools input[type="search"] { flex: 1 1 240px; min-width: 0; font: inherit; font-size: 16px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.qa-tools input:focus-visible, .qa summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.qa-tools label { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); }
+#qa-count { color: var(--muted); }
+.qa { display: grid; gap: 8px; }
+.qa details { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.qa summary { cursor: pointer; padding: 12px 14px; font-family: var(--display); font-weight: 700; font-size: 16px; display: flex; gap: 10px; align-items: baseline; list-style: none; }
+.qa summary::-webkit-details-marker { display: none; }
+.qa summary .tag { flex: none; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border-radius: 4px; padding: 2px 6px; }
+.qa summary .q { flex: 1; min-width: 0; }
+.qa details[data-known="1"] summary .q { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line); }
+.qa .a { padding: 0 14px 14px; display: grid; gap: 10px; }
+.qa .known { font-family: var(--display); font-size: 13px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <p>Contents</p>
+  <ol>
+    <li><a href="#summary">The project in a minute</a></li>
+    <li><a href="#run">Run it</a></li>
+    <li><a href="#architecture">How the code fits</a></li>
+    <li><a href="#files">File-by-file map</a></li>
+    <li><a href="#data">Data decisions</a></li>
+    <li><a href="#modules">Module by module</a></li>
+    <li><a href="#conventions">Course conventions</a></li>
+    <li><a href="#validation">How we know it’s right</a></li>
+    <li><a href="#limits">Limitations</a></li>
+    <li><a href="#qa">Viva question bank</a></li>
+    <li><a href="#numbers">Numbers cheat-sheet</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="summary">
+  <p class="eyebrow">Viva study guide · Applied Data Science</p>
+  <h1>Global CO₂ Emissions Analytics</h1>
+  <p class="lede">We took every concept from ADS Modules 1–6 and applied it to a real dataset of 50,411 country-year rows instead of 10-row classroom tables. A Python package does the maths with the course’s own formulas. A test suite proves each formula reproduces the lecture examples. A Streamlit dashboard, a report and a slide deck all read their numbers from the same code.</p>
+  <div class="facts">
+    <div class="fact"><b>50,411 × 79</b><span>rows × columns, 1750–2024</span></div>
+    <div class="fact"><b>219</b><span>countries among 254 entities</span></div>
+    <div class="fact"><b>53</b><span>syllabus concepts implemented</span></div>
+    <div class="fact"><b>56</b><span>automated tests, all passing</span></div>
+  </div>
+  <p><b>Three-sentence answer to “what did you do?”</b> We cleaned the Our World in Data CO₂ dataset so that countries and regional totals are never mixed, then described, compared, tested and modelled national emissions with methods from every module. The headline results: world emissions hit a record 38.6 Gt in 2024; per-person emissions are extremely skewed (mean 4.63 t vs median 3.21 t); continents differ significantly; and across countries, income is linked to emissions mainly through energy use. Every result is checked against the course worked examples and against standard libraries.</p>
+</section>
+
+<section id="run">
+  <h2>Run it</h2>
+  <p>The project uses <code>uv</code>, which installs Python 3.12 and the exact library versions in <code>uv.lock</code>.</p>
+  <pre><code>uv sync                                  # install
+uv run pytest                            # 56 tests
+uv run python scripts/export_results.py  # results.json, figures, concept matrix
+uv run streamlit run app/Home.py         # dashboard on http://localhost:8501</code></pre>
+  <p>The report is rebuilt with <code>scripts/build_report.py</code> (needs pandoc). If the raw file is ever replaced, its SHA-256 hash will no longer match <code>data/raw/MANIFEST.json</code> and the Dataset Explorer page says so.</p>
+</section>
+
+<section id="architecture">
+  <h2>How the code fits together</h2>
+  <p>The design rule: <b>every number is computed, nothing is typed in</b>. Analysis code knows nothing about Streamlit, and the app contains no statistics of its own; it calls the package.</p>
+  <div class="flow" role="img" aria-label="Pipeline: raw CSV to clean data to analysis functions to results, which feed the dashboard, results.json, the report and the slides">
+    <div class="node"><b>data/raw/</b><span>OWID CSV, codebook, continent lookup, hashes</span></div>
+    <div class="arrow" aria-hidden="true">→</div>
+    <div class="node"><b>data.py</b><span>tag countries vs aggregates, add continent, flags</span></div>
+    <div class="arrow" aria-hidden="true">→</div>
+    <div class="node"><b>descriptive · correlation · inference · regression · lof · timeseries</b><span>one module per syllabus unit</span></div>
+    <div class="arrow" aria-hidden="true">→</div>
+    <div class="node"><b>results.py</b><span>applies them to the real data</span></div>
+    <div class="arrow" aria-hidden="true">→</div>
+    <div class="node"><b>app/ · results.json · report · slides</b><span>all read the same numbers</span></div>
+  </div>
+  <p>Three data layers are kept apart: <b>raw</b> (never edited), <b>clean</b> (every raw row plus <code>entity_type</code>, <code>continent</code>, <code>gdp_per_capita</code> and flag columns), and <b>analysis-ready</b> (country-only slices built per analysis by <code>cross_section()</code>, <code>world_series()</code> and <code>paired_years()</code>).</p>
+</section>
+
+<section id="files">
+  <h2>File-by-file map</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>File</th><th>Module</th><th>What it does · key functions</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/co2ads/config.py</code></td><td>–</td><td>Paths, analysis years (2024 latest, 2022 for GDP, 2005 base), seed 42, which entities are international or special.</td></tr>
+      <tr><td><code>data.py</code></td><td>M1</td><td><code>verify_raw</code> (hash check), <code>classify_entity</code> (country / world / international / special / aggregate), <code>attach_continent</code> (ISO match; Kosovo by name), <code>clean</code> (no deletion, no imputation, adds flags), <code>cross_section</code>, <code>paired_years</code>.</td></tr>
+      <tr><td><code>quality.py</code></td><td>M1</td><td><code>missing_table</code>, <code>measurement_level</code>, <code>world_reconciliation</code> (World = Σ countries + aviation + shipping), <code>coverage_by_year</code>, <code>report</code>.</td></tr>
+      <tr><td><code>descriptive.py</code></td><td>M2</td><td>Mean (direct, short-cut, weighted, combined), <code>position_value</code> and <code>quantile</code> with the k(N+1) rule, range, IQR, QD and coefficients, σ (÷N) and s (÷n−1), Pearson and Bowley skewness, β₂, <code>box_plot</code>, <code>frequency_table</code> (√n classes) and grouped mean, median, mode, quartiles and σ; discrete series (<code>discrete_table</code>, <code>discrete_mean</code>, <code>discrete_quantile</code> by the cf rule, <code>discrete_std</code>); <code>cumulative_frequencies</code> and ogives; <code>inclusive_to_exclusive</code>, <code>classes_from_midpoints</code>; <code>open_end_mean</code>; <code>corrected_mean</code>; <code>moments</code> (β₁, β₂, γ₁, γ₂) and <code>empirical_mode</code>.</td></tr>
+      <tr><td><code>correlation.py</code></td><td>M2</td><td>Covariance, Pearson r by actual-mean, direct and assumed-mean methods, probable error, degree labels, central data point, correlation matrix, <code>partial_correlation</code>, <code>multiple_correlation</code>.</td></tr>
+      <tr><td><code>inference.py</code></td><td>M3</td><td>Normal pdf, z-scores, <code>empirical_rule</code>, Poisson pmf and <code>poisson_check</code>, <code>clt_simulation</code>, <code>ci_mean</code> (z if n ≥ 30, else t), z-test, one-sample / independent (pooled) / paired t, <code>error_rate_simulation</code>, <code>one_way_anova</code>, <code>two_way_anova</code>.</td></tr>
+      <tr><td><code>regression.py</code></td><td>M4 + M1</td><td><code>simple_regression</code>, <code>multiple_regression_2</code> (deviation sums, R², adjusted R², F, SE and t per coefficient), MAE/MSE/RMSE/MAPE/R², <code>min_max</code>, <code>holdout</code>, <code>kfold_cv</code>, <code>bootstrap_ci</code>.</td></tr>
+      <tr><td><code>lof.py</code></td><td>M5</td><td><code>manhattan_matrix</code>, <code>lof</code> (k-distance → reach-dist → lrd → LOF), <code>lof_table</code> (min–max scaling first).</td></tr>
+      <tr><td><code>timeseries.py</code></td><td>M6</td><td><code>centred_moving_average</code> (2×m for even m), <code>classical_decomposition</code>, average / moving-average / naïve forecasts, <code>mase</code>, <code>holdout_comparison</code>.</td></tr>
+      <tr><td><code>results.py</code></td><td>all</td><td>Applies everything to the real data: <code>global_trend</code>, <code>classification_and_tabulation</code>, <code>univariate_extras</code>, <code>correlation_forms</code>, <code>diagram_data</code>, <code>top_emitters</code>, <code>changes</code>, <code>per_capita_distribution</code>, <code>relationships</code>, <code>inference</code>, <code>regression</code>, <code>outliers_lof</code>, <code>time_series</code>, <code>compute_all</code>.</td></tr>
+      <tr><td><code>concepts.py</code></td><td>all</td><td>Registry of the 53 concepts (formula, variables, computed output, interpretation, validation, code). Feeds the Concepts Lab page and <code>docs/CONCEPT_MATRIX.md</code>.</td></tr>
+      <tr><td><code>app/Home.py</code>, <code>app/pages/*</code></td><td>–</td><td>Streamlit pages: Overview, Dataset Explorer, Descriptive Statistics, Classification &amp; Diagrams, Country &amp; Time, Statistical Analysis, Advanced Analytics, ADS Concepts Lab, Methodology. <code>app/common.py</code> caches the data and results.</td></tr>
+      <tr><td><code>scripts/export_results.py</code></td><td>–</td><td>Writes <code>docs/results.json</code>, the 13 report figures and the concept matrix.</td></tr>
+      <tr><td><code>scripts/build_report.py</code></td><td>–</td><td>Fills the report template from <code>results.json</code> and converts it to Word.</td></tr>
+      <tr><td><code>tests/</code></td><td>–</td><td><code>test_course_examples.py</code> (lecture examples), <code>test_cross_checks.py</code> (vs NumPy/SciPy/statsmodels/scikit-learn), <code>test_module2.py</code> (Module 2 slide examples), <code>test_data.py</code> (snapshot and cleaning), <code>test_app.py</code> (every page renders).</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="data">
+  <h2>Data decisions you must be able to defend</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Decision</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Keep every raw row; tag <code>entity_type</code></td><td>36 entities have no ISO code: continents, income groups, a duplicate “(GCP)” set of regions, EU, international aviation and shipping, Kuwaiti oil fires, Ryukyu Islands. Adding them to countries double-counts. Only Kosovo is a real country without an ISO code.</td></tr>
+      <tr><td>Check World = Σ countries + aviation + shipping</td><td>Proves the classification. 2024: 37,406 + 569 + 623 ≈ 38,599 Mt; the residual is under 0.5% in every test year.</td></tr>
+      <tr><td>No imputation; listwise deletion per analysis only</td><td>A blank means “not reported”, never zero emissions. Each result states its own n (214 countries for per-person CO₂ in 2024, 164 for the GDP models).</td></tr>
+      <tr><td>Flag outliers, don’t delete them</td><td>Qatar at 41.3 t per person is real, not an error. We use medians, IQR and log scales so a few extremes don’t dominate.</td></tr>
+      <tr><td>2024 for emissions, 2022 for anything with GDP</td><td>The GDP series ends in 2022; energy starts in 1965; consumption-based CO₂ starts in 1990 (about 120 countries).</td></tr>
+      <tr><td>log₁₀ for tests and regression</td><td>Raw per-person CO₂ has β₂ = 14.1; the log has β₂ = 2.82 (normal = 3) and follows the 68–95–99.7 rule.</td></tr>
+      <tr><td>Zero-CO₂ rows kept</td><td>640 country-years have CO₂ = 0; 578 are before 1950 (years before records begin). The recent ones are Antarctica and tiny territories.</td></tr>
+      <tr><td>Continent lookup added</td><td>The CO₂ file has no country → continent column, and ANOVA and two-sample tests need groups. We used OWID’s own lookup; only Antarctica has no continent.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="modules">
+  <h2>Module by module</h2>
+  <p>For each module: what we did, where it lives, and the number to quote.</p>
+
+  <div class="module">
+    <h3><span>M1</span>Data science process</h3>
+    <ul>
+      <li><b>CRISP-DM</b> shapes the project: questions → preparation → modelling → evaluation → dashboard → findings.</li>
+      <li><b>Cleaning</b>: duplicates (0), inconsistent entities (aggregates tagged), missing values (not imputed), invalid values (none in non-negative columns), outliers (flagged).</li>
+      <li><b>Hold-out</b> 2/3 : 1/3 on the multiple regression: test R² = 0.938 (109 train, 55 test).</li>
+      <li><b>5-fold cross-validation</b>: mean R² 0.946 (multiple), 0.803 (simple). Close to training values, so no overfitting.</li>
+      <li><b>Bootstrapping</b>: 95% CI for the median CO₂ per person = 2.54 – 3.73 t (5,000 resamples).</li>
+      <li><b>Normalisation</b>: min–max before LOF so neither axis dominates the distance.</li>
+    </ul>
+  </div>
+
+  <div class="module">
+    <h3><span>M2</span>Descriptive statistics and visualisation</h3>
+    <p>Variable: CO₂ per person, 214 countries, 2024.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Measure</th><th>Value</th><th>Say this</th></tr></thead>
+      <tbody>
+        <tr><td>Mean / median / grouped mode</td><td class="num">4.632 / 3.210 / 2.053</td><td>Mode &lt; Median &lt; Mean, the course’s sign of positive skew.</td></tr>
+        <tr><td>Q1 / Q3 / IQR</td><td class="num">0.985 / 6.019 / 5.034</td><td>(N+1)/4 rule. pandas’ default gives 1.014 / 5.980, a different convention.</td></tr>
+        <tr><td>σ (÷N) / s (÷n−1)</td><td class="num">5.501 / 5.513</td><td>CV = 118.7%: the spread exceeds the average.</td></tr>
+        <tr><td>Pearson Sk (mode) / (median) / Bowley</td><td class="num">0.469 / 0.776 / 0.116</td><td>Bowley ignores the tails, so it is much smaller.</td></tr>
+        <tr><td>Kurtosis β₂</td><td class="num">14.11</td><td>Leptokurtic: sharp peak, heavy tail.</td></tr>
+        <tr><td>Grouped (14 classes, width 3)</td><td class="num">mean 4.907, median 3.161, σ 5.336</td><td>Differs from exact values because grouping assumes mid-points.</td></tr>
+        <tr><td>Simple vs population-weighted mean</td><td class="num">4.632 vs 4.587 (World 4.729)</td><td>Average country vs average person; World adds aviation and shipping.</td></tr>
+        <tr><td>Box-plot fences</td><td class="num">−6.57 / 13.57</td><td>13 high outliers, 0 low.</td></tr>
+        <tr><td>Pearson r, GDP vs CO₂ per person (2022, n = 164)</td><td class="num">raw 0.745, log 0.907</td><td>All three course methods give identical r; |r| &gt; 6 × probable error.</td></tr>
+      </tbody>
+    </table></div>
+    <h3 style="font-size:17px">Classification &amp; tabulation (page: Classification &amp; Diagrams)</h3>
+    <ul>
+      <li><b>Geographical</b>: by continent. Asia’s 50 countries emit 60.6% of world CO₂; North America 9.99 t per person vs Africa 0.99 t.</li>
+      <li><b>Chronological</b>: world CO₂ by decade, 7.3 Gt a year in the 1950s → 37.2 Gt in 2020–2024. Growth per decade fell from about 54% (1970s) to 5%.</li>
+      <li><b>Qualitative</b>: two-fold (62 countries fell since 2005, 152 rose or same); manifold = continent → fell/rose → largest fuel source (oil in 159 countries, coal in 32).</li>
+      <li><b>Quantitative</b>: 5 magnitude classes of CO₂ per person (&lt;1, 1–3, 3–6, 6–10, 10+ t).</li>
+      <li><b>Tables</b>: simple (one-way), two-way (continent × class, with totals), higher-order (continent × fell/rose × class).</li>
+    </ul>
+    <h3 style="font-size:17px">More univariate methods (Descriptive Statistics page)</h3>
+    <ul>
+      <li><b>Discrete series</b>: years with falling CO₂, 2006–2024, n = 214. Mean ΣfX/N = 7.17 (short-cut gives the same), median 7, mode 6, Q1 5, Q3 10, σ 3.37 (actual and assumed-mean methods agree). Median and quartiles are read from the cf column with no interpolation.</li>
+      <li><b>Inclusive → exclusive</b>: 0–3, 4–7, … become −0.5–3.5, 3.5–7.5, …; grouped median 6.65.</li>
+      <li><b>Ogives</b>: less-than and more-than curves cross at N/2 = 107 → median 3.1607, the same as the formula L + (N/2 − cf)/f × i.</li>
+      <li><b>Open-end class</b> “15 t and above”: mean 4.598 (assumed width) vs 4.907 (all closed) vs 4.632 exact. The median 3.161 does not change.</li>
+      <li><b>Correcting wrong items</b>: averaging the 17 aggregate rows with countries gives 4.698; the correction formula recovers 4.632.</li>
+      <li><b>Moments</b>: μ₂ 30.26, μ₃ 462.4, μ₄ 12,918; β₁ 7.72, β₂ 14.11. Empirical mode 3Med − 2Mean = 0.36 vs grouped mode 2.05: the relation fails for extreme skew.</li>
+    </ul>
+    <h3 style="font-size:17px">Types of correlation</h3>
+    <ul>
+      <li>Positive: log GDP vs log CO₂ pc, r = 0.907. Negative: log GDP vs log CO₂ per kWh, r = −0.461 (richer countries, cleaner energy); UK CO₂ vs year, r = −0.931. None: population vs CO₂ pc, r = −0.002. Non-linear: raw GDP vs CO₂ pc, r = 0.745.</li>
+      <li><b>Partial</b>: r(CO₂, GDP | energy) = −0.151, r(CO₂, energy | GDP) = 0.850. <b>Multiple</b> R = 0.975 = √(regression R² 0.951).</li>
+    </ul>
+    <p>Diagrams and graphs: simple, multiple, sub-divided, percentage, deviation and broken bars; rectangle (width = population, height = per person, area = total), square (side = √value), circle (r = √(value/π)), pie, pictogram, cartogram (world map); line graph with and without a false baseline; histogram, frequency polygon, ogive, box plot, distribution chart, scatter, scatter matrix, bubble chart.</p>
+  </div>
+
+  <div class="module">
+    <h3><span>M3</span>Inferential statistics</h3>
+    <ul>
+      <li><b>Normal / empirical rule</b>: raw values within ±1σ: 88.8% (normal 68.3%). Log values: 70.1 / 93.9 / 100% vs 68.3 / 95.4 / 99.7%.</li>
+      <li><b>CLT</b>: 10,000 samples of n = 30 from the real data. The SD of the sample means is 1.018, against σ/√n = 1.004. Skewness falls from 0.78 to 0.30.</li>
+      <li><b>CI</b>: 95% z-interval for the mean = 3.89 – 5.37 t.</li>
+      <li><b>z-test</b>: H₀ μ = world per-person 4.729. Z = −0.26, fail to reject.</li>
+      <li><b>Paired t</b> (2005 vs 2024, n = 214): 5.28 → 4.63 t, t = −2.86, p = 0.0046, reject H₀. Yet 127 countries rose and 87 fell.</li>
+      <li><b>Independent t</b> (log, Europe 44 vs Asia 50): t = 1.75, p = 0.083, fail to reject. Variance ratio 9.3, so we also report Welch’s test: p = 0.070.</li>
+      <li><b>One-way ANOVA</b> (log, 6 continents): F = 30.87 vs critical 2.26, p ≈ 2 × 10⁻²³, η² = 0.43.</li>
+      <li><b>Two-way ANOVA</b> without replication (continent × 5 years): continent F = 60.1 (significant), year F = 1.36 (not significant).</li>
+      <li><b>Type I/II</b>: simulated Type I rate 0.09 at n = 40 (nominal 0.05). β = 0.51 for a 1.5 t shift (power 0.49).</li>
+      <li><b>Poisson</b>: yearly count of countries with a &gt;10% fall has mean 11.97 and variance 65.4. Dispersion 5.5, so not Poisson.</li>
+    </ul>
+  </div>
+
+  <div class="module">
+    <h3><span>M4</span>Regression</h3>
+    <ul>
+      <li><b>Simple</b>: log CO₂pc = 1.0447 · log GDPpc − 3.8696. R² = 0.823, t(slope) = 27.4. The slope is an elasticity: 1% richer goes with about 1.04% more CO₂ per person.</li>
+      <li><b>Multiple</b> (+ log energy per person): Ŷ = −3.169 − 0.117·X₁ + 0.986·X₂. R² 0.951, adjusted R² 0.950, F = 1554 (critical 3.05).</li>
+      <li><b>t-tests</b>: energy t = 20.5 (significant); GDP t = −1.94, p = 0.054 (not significant). Cause: <b>multicollinearity</b>, r₁₂ = 0.94.</li>
+      <li><b>Errors</b>: MAE and RMSE on the log scale. MAPE is computed after converting back to tonnes (23.7% multiple, 49.0% simple), because log values near 0 make MAPE explode.</li>
+    </ul>
+  </div>
+
+  <div class="module">
+    <h3><span>M5</span>Local Outlier Factor</h3>
+    <p class="formula">reach(p,o) = max(k-dist(o), d(p,o)) · lrd(p) = |Nₖ(p)| / Σ reach · LOF(p) = mean lrd(Nₖ(p)) / lrd(p)</p>
+    <ul>
+      <li>Manhattan distance on min–max scaled log GDP and log CO₂ per person, k = 10, 164 countries (2022).</li>
+      <li>Top: Qatar 2.37, North Korea 1.86, Norway 1.67, Switzerland 1.59, Venezuela 1.59, Burundi 1.58. 6 countries are above 1.5.</li>
+      <li>Only Qatar and Trinidad &amp; Tobago are in both the LOF top 10 and the IQR list. LOF is two-dimensional and local, so it also finds <i>low</i> emitters for their income.</li>
+    </ul>
+  </div>
+
+  <div class="module">
+    <h3><span>M6</span>Time series</h3>
+    <ul>
+      <li><b>Decomposition</b> needs seasons inside a year, and OWID data is annual. It is implemented and reproduces the slide example exactly (indices −10.4375, −11.6875, 6.0625, 16.0625; forecasts 23.31 and 43.56). On CO₂ we use only its trend step, a centred 5-year moving average.</li>
+      <li><b>Hold-out</b>: train 1950–2019, test 2020–2024. MAPE / MASE: naïve 2.93% / 2.08, MA(3) 3.13% / 2.25, linear trend 2000–2019 7.57% / 5.43, average 43.7% / 31.5.</li>
+      <li>All MASE &gt; 1: nothing beat “same as last year”. The trend overshoots because growth slowed after 2013 and then COVID hit.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="conventions">
+  <h2>Course conventions, and four errors we found</h2>
+  <ul>
+    <li><b>Quartiles</b> use the k(N+1)/4 position with interpolation between neighbours, which equals NumPy’s “weibull” method. pandas and Excel use other conventions, so their Q1 differs (1.014 vs our 0.985).</li>
+    <li><b>σ divides by N</b> on the formula sheet; the t-test slides use s with n − 1. We report both.</li>
+    <li><b>Classes ≈ √n</b> for histograms: √214 ≈ 15, rounded to a width of 3 t, giving 14 classes.</li>
+  </ul>
+  <div class="warn"><b>Errors in the course material.</b> (1) The formula sheet’s kurtosis table pairs the shape descriptions with the wrong β₂ values; β₂ &gt; 3 means more peaked with heavier tails. (2) The ANOVA slides compute the grand mean as the mean of sample means, which is only correct for equal group sizes. Our continents have 12–55 countries, so we use the mean of all observations (0.357 vs 0.404), and SS_T = SS_B + SS_W then holds exactly. (3) Module 4’s slide testing b₂ reuses b₁’s numbers. (4) Module 2’s “median from cumulative data” example uses i = 10 for classes that are 5 wide and prints 14.29; the correct median is 10 + (327.5 − 224)/241 × 5 = 12.15.</div>
+</section>
+
+<section id="validation">
+  <h2>How we know the numbers are right</h2>
+  <ul>
+    <li><b>Lecture examples</b> (<code>tests/test_course_examples.py</code>): Module 2 discrete mean (41), discrete median (₹16,800), discrete quartiles (P20 = Q1 = D3 = 20, Q3 = 40), grouped Q1 (10), corrected means (39.7, 40.18), open-end mean; IQ one-sample t (t = −0.62, CI 87.0–107.4), diet independent t (0.609), soldiers paired t (2.16), wait-time CI (42.23–47.77), ocean z (2.067), wheat ANOVA (F = 1.5), multiple regression (b₁ 3.1479, b₂ −1.6561, R² 0.9626), expenditure regression (8.4, 3.2), 4-point LOF (d = 2.0), both decompositions, average and MA forecast errors, Poisson hospital example.</li>
+    <li><b>Independent libraries</b> (<code>tests/test_cross_checks.py</code>): quantiles vs NumPy, kurtosis and t-tests vs SciPy, two-way ANOVA and regression standard errors vs statsmodels, LOF vs scikit-learn.</li>
+    <li><b>Data</b> (<code>tests/test_data.py</code>): hash, shape, unique key, nothing imputed, Kosovo is a country, World reconciliation.</li>
+    <li><b>App</b> (<code>tests/test_app.py</code>): all 9 pages render; edge cases (empty filters, years without GDP) were also exercised.</li>
+    <li><b>One source of numbers</b>: dashboard, report, slides and this guide all come from <code>results.py</code>.</li>
+  </ul>
+  <p>The only mismatch with a slide is the diet example: t = 0.6103 exactly, against 0.609 on the slide, because the slide rounds √10.74 before dividing.</p>
+</section>
+
+<section id="limits">
+  <h2>Limitations to state before you are asked</h2>
+  <ul>
+    <li>The ~214 countries are almost the whole population, not a random sample. Read p-values and CIs as statements about the process that generates emissions (a super-population view).</li>
+    <li>All relationships are cross-country associations. Energy and CO₂ are partly the same quantity, so R² = 0.95 is partly built in.</li>
+    <li>Assumptions are only approximately met: normality holds on the log scale only; continent variances differ (hence Welch); predictors are collinear.</li>
+    <li>Only fossil and industry CO₂ (territorial). Land use, methane and consumption-based emissions are outside the main analysis.</li>
+    <li>Coverage is uneven: about 5 countries in 1750, about 175 in 1950, 216 from 2000.</li>
+    <li>The forecast hold-out is 5 years and contains the 2020 shock. Annual data has no seasonality.</li>
+    <li>OWID revises its data; our numbers refer to the hashed 30 Sep 2026 revision.</li>
+  </ul>
+</section>
+
+<section id="qa">
+  <h2>Viva question bank</h2>
+  <p>Tap a question to reveal the model answer. Tick “I know this” to strike it through; ticks are saved in this browser only.</p>
+  <div class="qa-tools">
+    <input type="search" id="qa-filter" placeholder="Filter questions, e.g. ANOVA, quartile, LOF" aria-label="Filter questions">
+    <label><input type="checkbox" id="qa-hide-known"> Hide known</label>
+    <span id="qa-count" aria-live="polite"></span>
+  </div>
+  <div class="qa" id="qa-list"></div>
+</section>
+
+<section id="numbers">
+  <h2>Numbers cheat-sheet</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Quantity</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td>World CO₂ 2024 / 1990 / 1950</td><td class="num">38,599 / 22,732 / 5,930 Mt</td></tr>
+      <tr><td>Change since 1990 · multiple of 1950</td><td class="num">+69.8% · 6.5×</td></tr>
+      <tr><td>2020 drop · 2021 rebound</td><td class="num">−5.2% · +4.9%</td></tr>
+      <tr><td>World per person 2024</td><td class="num">4.73 t</td></tr>
+      <tr><td>China / US / India share 2024</td><td class="num">31.8% / 12.7% / 8.3% (top 3: 52.8%, top 10: 68.9%)</td></tr>
+      <tr><td>India rank total vs per person</td><td class="num">#3 vs #130 (2.20 t)</td></tr>
+      <tr><td>US rank total vs per person</td><td class="num">#2 vs #12 (14.2 t)</td></tr>
+      <tr><td>Cumulative share since 1750: US / China</td><td class="num">23.5% / 15.4%</td></tr>
+      <tr><td>Countries lower / higher in 2024 than 2005</td><td class="num">62 / 152 (of 215)</td></tr>
+      <tr><td>China’s increase 2005→2024</td><td class="num">+6,407 Mt (all other increases: 5,810 Mt)</td></tr>
+      <tr><td>Per person 2024: mean / median / σ / β₂</td><td class="num">4.632 / 3.210 / 5.501 / 14.11</td></tr>
+      <tr><td>Max per person</td><td class="num">Qatar 41.27 t</td></tr>
+      <tr><td>Pearson r log GDP vs log CO₂ pc (2022)</td><td class="num">0.907 (raw 0.745), n = 164</td></tr>
+      <tr><td>Simple / multiple regression R²</td><td class="num">0.823 / 0.951</td></tr>
+      <tr><td>One-way ANOVA F (crit) · η²</td><td class="num">30.87 (2.26) · 0.43</td></tr>
+      <tr><td>Paired t (2005 vs 2024)</td><td class="num">−2.86, p = 0.0046</td></tr>
+      <tr><td>95% CI mean per person</td><td class="num">3.89 – 5.37 t</td></tr>
+      <tr><td>LOF top score</td><td class="num">Qatar 2.37 (k = 10)</td></tr>
+      <tr><td>Best forecast (MASE)</td><td class="num">Naïve, 2.08 (MAPE 2.93%)</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<footer>Generated from the project’s computed results (OWID CO₂ dataset, revision of 30 Sep 2026). If the data are refreshed, re-run <code>scripts/export_results.py</code> and check these numbers against <code>docs/results.json</code>.</footer>
+</main>
+</div>
+
+<script>
+const QA = [
+  ["Data", "Why this dataset?", "It has tens of thousands of real observations (50,411 × 79) across countries and years, so every syllabus topic has something real to work on: skewed distributions for Module 2, groups for ANOVA, paired years for the paired t-test, a long annual series for Module 6, and unusual countries for LOF. It is open (CC BY 4.0) and well documented by a codebook."],
+  ["Data", "How did you avoid double counting?", "Every entity is classified in <code>data.classify_entity</code>. Countries have an ISO code (plus Kosovo); everything else is World, international transport, a special source or an aggregate. Analyses filter to countries only. We verified it: World = Σ countries + international aviation + shipping to within 0.5% (e.g. 2024: 37,406 + 569 + 623 ≈ 38,599 Mt)."],
+  ["Data", "Why didn’t you drop rows with missing values or fill them in?", "Missingness ranges up to 95% by column. Dropping any row with a gap would delete most of the data, and filling gaps would invent emissions. A blank means not reported, never zero. Each analysis drops missing values only in the columns it uses and reports its own n."],
+  ["Data", "Are the outliers errors?", "No. Qatar, Kuwait and the other flagged countries are plausible: several are small states with large oil and gas industries. We flag them but keep them, and use robust measures (median, IQR) and log scales so they don’t dominate."],
+  ["Data", "Why use 2022 for some analyses and 2024 for others?", "The GDP series ends in 2022. Anything needing GDP (correlation, regression, LOF) uses 2022; everything else uses the latest year, 2024."],
+  ["M1", "Is this data science or data analytics?", "Mostly analytics in the course’s sense (descriptive and diagnostic: what happened, how countries differ), with predictive parts: regression with cross-validation and time-series forecasting on a hold-out. It follows the full data science process: problem, preparation, modelling, evaluation, deployment as a dashboard."],
+  ["M1", "Why use k-fold cross-validation instead of one train/test split?", "One split gives one score that depends on which countries land in the test set. With 5 folds every country is validated exactly once and we average the scores (mean R² 0.946, fold SD shown in the app), which is more stable. The single 2/3 hold-out gave a similar test R² of 0.938."],
+  ["M1", "What did bootstrapping give you?", "A confidence interval for the median CO₂ per person (2.54–3.73 t), which has no simple formula like the mean’s σ/√n. We resample the 214 values with replacement 5,000 times and take the 2.5th and 97.5th percentiles of the medians."],
+  ["M2", "Why do your quartiles differ from Excel or pandas?", "The course defines Q1 as the (N+1)/4-th ordered item, interpolating between neighbours. That is NumPy’s ‘weibull’ method. pandas defaults to a different interpolation (‘linear’), giving Q1 = 1.014 instead of our 0.985. Both are valid conventions; we follow the course."],
+  ["M2", "Which average should you report for per-person emissions?", "The median (3.21 t), because the distribution is strongly right-skewed: the mean (4.63 t) is pulled up by a few extreme emitters. For ‘the average person’ use the population-weighted mean ΣWX/ΣW (4.59 t)."],
+  ["M2", "Why does the grouped mean (4.907) differ from the actual mean (4.632)?", "The grouped formula assumes every value sits at its class mid-point. Most countries are near 0–2 t but are counted as 1.5 t. The direct and step-deviation grouped methods agree with each other (4.907), as they must. With raw data available, the exact value is the one to report."],
+  ["M2", "Why are Pearson’s and Bowley’s skewness so different?", "Pearson uses the mean and σ, which are pulled by the long right tail (0.776). Bowley uses only Q1, the median and Q3, the middle 50% (0.116). The middle of the distribution is only mildly skewed; the tail is extreme."],
+  ["M2", "What does β₂ = 14.1 mean?", "Kurtosis μ₄/μ₂². Above 3 is leptokurtic: more peaked and heavier-tailed than a normal curve. Here, most countries cluster at low values with a few very high emitters. Note that the course formula sheet swaps the shape descriptions in its table."],
+  ["M2", "Why is r higher on the log scale (0.907) than raw (0.745)?", "Pearson r measures linear association. Raw GDP and CO₂ per person are both right-skewed and their relationship is multiplicative (curved), so a few rich, high-emitting countries dominate. Taking logs makes the relationship close to a straight line."],
+  ["M2", "What is the probable error and how did you use it?", "P.E. = 0.6745 (1 − r²)/√N. The classical rule says r is significant if |r| > 6 × P.E. For log GDP vs log CO₂, P.E. = 0.0093, far below r/6."],
+  ["M2", "What is the central data point?", "The vector of means of the variables, here (mean GDP per person = 19,149 int-$, mean CO₂ per person = 4.53 t) for 2022. Distance from it, in SD units, is a first outlier screen: Qatar, UAE and Kuwait are farthest."],
+  ["M2", "Name the four types of classification and give an example from your data.", "Geographical (by continent: Asia emits 60.6% of world CO₂), chronological (world CO₂ by decade), qualitative or by attribute (did emissions fall since 2005; largest fuel source), quantitative or by magnitude (classes of CO₂ per person: under 1 t, 1–3 t, …)."],
+  ["M2", "How do you find the median of a discrete series?", "Arrange X in order, build the cumulative frequency, find the position (N+1)/2, and take the X whose cf first equals or exceeds it. No interpolation. For our ‘years with falling CO₂’ series, N = 214, position 107.5, and the cf first passes it at X = 7."],
+  ["M2", "What is an ogive and what can you read from it?", "A cumulative frequency curve. The ‘less than’ ogive plots cf against upper class limits; the ‘more than’ ogive plots it against lower limits. They cross at N/2, which gives the median (3.16 t here, the same as the formula). Quartiles are read at N/4 and 3N/4."],
+  ["M2", "Why not use the mean with an open-end class?", "The mean needs the class mid-point, so you must assume the missing limit. The course assumes the neighbouring class width. Our ‘15 t and above’ table gives 4.60 under that assumption, against 4.63 exactly. The median doesn’t need the open limit (3.16 either way), so it is preferred."],
+  ["M2", "Why convert inclusive classes to exclusive?", "Whole-number classes such as 0–3 and 4–7 leave gaps between 3 and 4, so the interpolation formulas, which assume continuous classes, would be wrong. Subtract half the gap (0.5) from each lower limit and add it to each upper limit: −0.5–3.5, 3.5–7.5, …"],
+  ["M2", "How do you correct a mean computed with wrong values?", "Recover the total N·X̄, subtract the wrong items, add the right ones, and divide by the (possibly changed) N. Our example: averaging 17 regional and income-group rows in with countries gives 4.698 t; removing them gives the correct 4.632 t."],
+  ["M2", "What are the four moments and what does each measure?", "μ₁ about the origin is the mean; about the mean, μ₂ is the variance, μ₃ measures skewness (β₁ = μ₃²/μ₂³, sign from μ₃) and μ₄ measures kurtosis (β₂ = μ₄/μ₂²). Ours: μ₃ = 462 &gt; 0 (right skew), β₂ = 14.1 (heavy tail)."],
+  ["M2", "What is partial correlation and what did it show?", "The correlation between two variables with a third held constant: r_y1·2 = (r_y1 − r_y2 r_12)/√((1 − r_y2²)(1 − r_12²)). GDP and CO₂ per person correlate at 0.907, but holding energy use constant it drops to −0.15. Energy keeps 0.85. That is the same story as the regression’s multicollinearity result."],
+  ["M2", "Why a rectangular diagram for emissions?", "Width = population and height = CO₂ per person, so area = total CO₂. One picture shows all three measures: China’s and India’s rectangles are both very wide, but China’s is about four times taller."],
+  ["M3", "How did you show the central limit theorem with real data?", "We treated the 214 countries’ values as the population (skewed, β₂ = 14) and drew 10,000 random samples of n = 30. The sample means have SD 1.018, against the theoretical σ/√n = 1.004, and are nearly symmetric. The app lets you change n and watch the histogram tighten."],
+  ["M3", "When do you use z and when t?", "Course rule: z when σ is known or n ≥ 30; t when σ is unknown and n < 30, with n − 1 degrees of freedom. Our CI for all 214 countries uses z; restricted to one continent with fewer than 30 countries, the app switches to t automatically."],
+  ["M3", "How can you do inference when you have every country?", "Fair point. We interpret tests and CIs in a super-population sense: the observed countries are one realisation of the process that generates national emissions. We state this caveat on the page and in the report."],
+  ["M3", "Explain your paired t-test result.", "Same 214 countries in 2005 and 2024; d = 2024 − 2005 for each. Mean d = −0.65 t, s_d = 3.30, t = d̄/(s_d/√n) = −2.86 with 213 df, p = 0.0046. Reject H₀: the average country’s per-person emissions fell. But 127 countries increased and only 87 decreased: big cuts in rich high emitters drive the mean."],
+  ["M3", "Why report Welch’s test as well as the pooled t-test?", "The pooled test assumes equal variances. Europe’s log-variance is much smaller than Asia’s (ratio 9.3). Welch’s test doesn’t assume equal variances; it gives p = 0.070 against the pooled p = 0.083, so the conclusion (not significant at 5%) is the same."],
+  ["M3", "Why ANOVA and not several t-tests?", "With 6 continents there are 15 pairs. Running 15 t-tests at α = 0.05 inflates the chance of at least one false positive. ANOVA tests all means at once: F = MS_between/MS_within = 30.87 against a critical value of 2.26."],
+  ["M3", "What did you change in the ANOVA method from the slides?", "The slides take the grand mean as the average of the group means, which only works for equal group sizes. Our groups have 12 to 55 countries, so we use the mean of all observations (0.357, not 0.404). With that, SS_total = SS_between + SS_within exactly, and our F matches SciPy."],
+  ["M3", "Why is ‘year’ not significant in the two-way ANOVA even though emissions changed?", "Two-way ANOVA without replication compares column totals. Asia rose (2.05 → 4.87 t) while Europe (11.1 → 6.5 t) and North America fell, so the year totals barely move. The opposite movements are an interaction, which ends up in the residual because one value per cell cannot test it."],
+  ["M3", "Your simulated Type I error was 0.09, not 0.05. Is the code wrong?", "No. With n = 40 drawn from a very skewed population, the z-statistic is not yet normal, so the nominal α is not achieved. The rate approaches 0.05 as n grows; you can see this with the slider in the app. It shows why checking assumptions matters."],
+  ["M3", "Why is the Poisson model rejected?", "Poisson requires mean = variance. The yearly count of countries with a >10% fall has mean 11.97 and variance 65.4 (dispersion 5.5, χ² p ≈ 10⁻²¹). Drops cluster in crises (42 countries in 2020, 27 in 2009) instead of happening independently at a constant rate."],
+  ["M4", "Interpret the regression slope of 1.04.", "Both variables are logged, so the slope is an elasticity: across countries, 1% higher GDP per person goes with about 1.04% higher CO₂ per person on average. It is an association, not a causal effect."],
+  ["M4", "Why is GDP not significant in the multiple regression when it is highly correlated with CO₂?", "Multicollinearity. GDP and energy per person correlate at r₁₂ = 0.94. A partial coefficient measures the effect of GDP holding energy constant, and the data contain little variation in GDP at fixed energy, so its standard error grows. Energy carries the information: income relates to CO₂ mainly through energy use."],
+  ["M4", "Why do the F-test before the t-tests?", "Course procedure: the F-test checks whether any predictor matters (H₀: b₁ = b₂ = 0). Only if it is rejected do we test individual coefficients. Here F = 1554 against a critical value of 3.05, so we proceed."],
+  ["M4", "What’s the difference between R² and adjusted R²?", "R² always rises when you add a predictor. Adjusted R² = 1 − (1 − R²)(n − 1)/(n − k − 1) penalises extra predictors. Here 0.951 vs 0.950: with 164 countries and 2 predictors the penalty is tiny."],
+  ["M4", "Why compute MAPE after back-transforming?", "On the log₁₀ scale many values are near 0 (about 1 t per person), and dividing by values near zero makes MAPE explode. In tonnes, the multiple model’s MAPE is 23.7%."],
+  ["M5", "Walk through LOF.", "1) Manhattan distance between countries. 2) k-distance = distance to the k-th nearest neighbour; the neighbourhood is everything within it. 3) reach-dist(p,o) = max(k-dist(o), d(p,o)). 4) lrd(p) = |Nₖ| / Σ reach-dist. 5) LOF = average lrd of neighbours / own lrd. About 1 = normal; well above 1 = isolated. Our code reproduces the slide example (d = 2.0) and matches scikit-learn."],
+  ["M5", "Why scale before LOF?", "Distances add the two coordinates. Unscaled, GDP (thousands of dollars) would swamp CO₂ (tonnes). Min–max scaling puts both on [0, 1], after logging to reduce skew."],
+  ["M5", "How is LOF different from the IQR rule?", "IQR is one-dimensional and global: it flags only very high emitters (13 countries). LOF is two-dimensional and local: it flags countries unusual compared with similar countries, including rich low emitters (Switzerland, Norway) and very poor countries. Only Qatar and Trinidad & Tobago appear in both."],
+  ["M6", "Why didn’t you compute seasonal indices?", "Seasonality is a pattern within a year, and OWID data is annual, so no seasonal component exists. We implemented classical decomposition and verified it on the course’s quarterly example, and use only its trend step (centred moving average) on CO₂."],
+  ["M6", "What does MASE tell you, and why does naïve win?", "MASE = MAE / mean naïve error on the training period. Below 1 beats ‘same as last year’. On 2020–2024 every method scored above 1. Naïve did best (2.08) because annual emissions change slowly except for shocks like 2020, which no trend model anticipates. The 2000–2019 trend overshot (MASE 5.43) because growth slowed after 2013."],
+  ["M6", "Is your 2030 projection a forecast?", "No. Extending the 2000–2024 least-squares line (525.5 Mt per year) gives about 42.6 Gt in 2030, but that is a mechanical extrapolation. It ignores policy, technology and economic shocks, and we say so wherever it appears."],
+  ["Code", "How do you know your code is correct?", "56 automated tests. Every formula reproduces the lecture worked examples, every formula agrees with an independent library (NumPy, SciPy, statsmodels, scikit-learn), the data snapshot is hash-checked, and every dashboard page renders. Run <code>uv run pytest</code> to see them pass."],
+  ["Code", "How do the dashboard, report and slides stay consistent?", "They never contain hand-typed results. <code>results.py</code> computes everything; the app calls it directly; <code>export_results.py</code> writes results.json; the report is filled from that JSON. Change the data and everything updates together."],
+  ["Code", "How is the work reproducible?", "Raw data is stored with its SHA-256 hash and download date, library versions are pinned in uv.lock, every random process uses seed 42, and the README lists the four commands that rebuild everything."],
+  ["Code", "What would you add with more time?", "Consumption-based vs territorial emissions; a Kaya decomposition into population, income, energy intensity and carbon intensity; clustering countries (k-means, listed in Module 1’s tasks); and monthly data to apply seasonal decomposition properly."]
+];
+
+(function () {
+  const list = document.getElementById("qa-list");
+  const filter = document.getElementById("qa-filter");
+  const hideKnown = document.getElementById("qa-hide-known");
+  const count = document.getElementById("qa-count");
+  let known = {};
+  try { known = JSON.parse(localStorage.getItem("co2-viva-known") || "{}") || {}; } catch (e) { known = {}; }
+  const save = () => { try { localStorage.setItem("co2-viva-known", JSON.stringify(known)); } catch (e) {} };
+
+  QA.forEach(([tag, q, a], i) => {
+    const d = document.createElement("details");
+    d.dataset.text = (tag + " " + q + " " + a.replace(/<[^>]+>/g, "")).toLowerCase();
+    d.dataset.known = known[i] ? "1" : "0";
+    d.innerHTML = `<summary><span class="tag">${tag}</span><span class="q">${q}</span></summary>
+      <div class="a"><p>${a}</p><label class="known"><input type="checkbox" id="known-${i}"${known[i] ? " checked" : ""}> I know this</label></div>`;
+    d.querySelector("input").addEventListener("change", (ev) => {
+      known[i] = ev.target.checked; d.dataset.known = ev.target.checked ? "1" : "0"; save(); apply();
+    });
+    list.appendChild(d);
+  });
+
+  function apply() {
+    const term = filter.value.trim().toLowerCase();
+    let shown = 0, k = 0;
+    list.querySelectorAll("details").forEach((d) => {
+      const isKnown = d.dataset.known === "1";
+      if (isKnown) k++;
+      const vis = (!term || d.dataset.text.includes(term)) && !(hideKnown.checked && isKnown);
+      d.hidden = !vis; if (vis) shown++;
+    });
+    count.textContent = `${shown} shown · ${k} of ${QA.length} known`;
+  }
+  filter.addEventListener("input", apply);
+  hideKnown.addEventListener("change", apply);
+  apply();
+})();
+</script>

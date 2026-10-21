@@ -90,6 +90,30 @@ def pair_counts(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     return m.T @ m
 
 
+def partial_correlation(y, x1, x2) -> float:
+    """r_y1·2: correlation of y and x1 with x2 held constant (course: 'partial' correlation).
+
+    r_y1·2 = (r_y1 − r_y2·r_12) / √[(1 − r_y2²)(1 − r_12²)]
+    """
+    y, x1, x2 = (np.asarray(v, float) for v in (y, x1, x2))
+    ok = ~(np.isnan(y) | np.isnan(x1) | np.isnan(x2))
+    y, x1, x2 = y[ok], x1[ok], x2[ok]
+    ry1, ry2, r12 = pearson_actual_mean(y, x1), pearson_actual_mean(y, x2), pearson_actual_mean(x1, x2)
+    return (ry1 - ry2 * r12) / math.sqrt((1 - ry2 ** 2) * (1 - r12 ** 2))
+
+
+def multiple_correlation(y, x1, x2) -> float:
+    """R_y·12: correlation of y with the best linear combination of x1 and x2 ('multiple' correlation).
+
+    R² = (r_y1² + r_y2² − 2·r_y1·r_y2·r_12) / (1 − r_12²)  — equals the regression R².
+    """
+    y, x1, x2 = (np.asarray(v, float) for v in (y, x1, x2))
+    ok = ~(np.isnan(y) | np.isnan(x1) | np.isnan(x2))
+    y, x1, x2 = y[ok], x1[ok], x2[ok]
+    ry1, ry2, r12 = pearson_actual_mean(y, x1), pearson_actual_mean(y, x2), pearson_actual_mean(x1, x2)
+    return math.sqrt((ry1 ** 2 + ry2 ** 2 - 2 * ry1 * ry2 * r12) / (1 - r12 ** 2))
+
+
 def analyse(x, y) -> dict:
     x, y = _pair(x, y)
     r = pearson_actual_mean(x, y)

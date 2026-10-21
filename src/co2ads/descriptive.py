@@ -246,6 +246,198 @@ def grouped_mode(t: pd.DataFrame) -> dict:
             "f1": int(f[m]), "f0": int(f0), "f2": int(f2), "delta1": int(d1), "delta2": int(d2)}
 
 
+def class_table(lower, upper, f) -> pd.DataFrame:
+    """Frequency table from given class limits (exclusive form) and frequencies."""
+    lower, upper, f = (np.asarray(v, float) for v in (lower, upper, f))
+    t = pd.DataFrame({"lower": lower, "upper": upper, "mid": (lower + upper) / 2, "f": f.astype(int)})
+    t["cf"] = t["f"].cumsum()
+    t["rel_f_pct"] = t["f"] / t["f"].sum() * 100
+    t.attrs["width"] = float(upper[0] - lower[0])
+    return t
+
+
+def inclusive_to_exclusive(lower, upper) -> tuple[np.ndarray, np.ndarray]:
+    """Inclusive classes (e.g. 0–4, 5–9) → exclusive by subtracting half the gap from lower
+    limits and adding it to upper limits (gap = next lower − this upper, usually 1 → ±0.5)."""
+    lower, upper = np.asarray(lower, float), np.asarray(upper, float)
+    half = (lower[1] - upper[0]) / 2
+    return lower - half, upper + half
+
+
+def classes_from_midpoints(mid) -> tuple[np.ndarray, np.ndarray]:
+    """Mid-values → class limits: i = difference of mid-values, limits = m ∓ i/2."""
+    mid = np.asarray(mid, float)
+    i = mid[1] - mid[0]
+    return mid - i / 2, mid + i / 2
+
+
+def cumulative_frequencies(t: pd.DataFrame) -> pd.DataFrame:
+    """'Less than' (cf up to each upper limit) and 'more than' (cf from each lower limit) tables."""
+    n = t["f"].sum()
+    return pd.DataFrame({
+        "upper": t["upper"], "less_than_cf": t["f"].cumsum(),
+        "lower": t["lower"], "more_than_cf": n - t["f"].cumsum() + t["f"],
+    })
+
+
+def ogive_value(t: pd.DataFrame, target: float) -> float:
+    """Read the less-than ogive at cumulative frequency `target` (linear between class limits).
+
+    At target = N/2 this is the graphical median; it equals the interpolation formula
+    L + (N/2 − cf)/f × i, which is why both methods give the same answer.
+    """
+    xs = np.r_[t["lower"].iloc[0], t["upper"].to_numpy()]
+    ys = np.r_[0, t["f"].cumsum().to_numpy()]
+    return float(np.interp(target, ys, xs))
+
+
+def ogive_intersection(t: pd.DataFrame) -> tuple[float, float]:
+    """Point where less-than and more-than ogives cross: x = median, y = N/2."""
+    n = t["f"].sum()
+    return ogive_value(t, n / 2), n / 2
+
+
+def open_end_mean(t: pd.DataFrame, open_first: bool = False, open_last: bool = True) -> float:
+    """Mean when the first/last class is open-ended ('below L', 'L and above').
+
+    Course rule: assume the open class has the same width as its neighbour, then Σfm/N.
+    Unreliable when class widths vary; median and quartiles do not need the open limit.
+    """
+    t = t.copy()
+    if open_first:
+        w = t["upper"].iloc[1] - t["lower"].iloc[1]
+        t.loc[t.index[0], "lower"] = t["upper"].iloc[0] - w
+    if open_last:
+        w = t["upper"].iloc[-2] - t["lower"].iloc[-2]
+        t.loc[t.index[-1], "upper"] = t["lower"].iloc[-1] + w
+    mid = (t["lower"] + t["upper"]) / 2
+    return float((t["f"] * mid).sum() / t["f"].sum())
+
+
+def close_top_classes(t: pd.DataFrame, open_from: float) -> pd.DataFrame:
+    """Merge all classes with lower limit ≥ open_from into one open-ended class 'open_from and above'."""
+    keep = t[t["lower"] < open_from]
+    top = t[t["lower"] >= open_from]
+    row = pd.DataFrame({"lower": [open_from], "upper": [np.inf], "mid": [np.nan], "f": [int(top["f"].sum())]})
+    out = pd.concat([keep[["lower", "upper", "mid", "f"]], row], ignore_index=True)
+    out["cf"] = out["f"].cumsum()
+    out["rel_f_pct"] = out["f"] / out["f"].sum() * 100
+    out.attrs["width"] = t.attrs.get("width", _width(t))
+    return out
+
+
+def corrected_mean(n: int, mean: float, wrong=(), right=()) -> dict:
+    """Correct a mean computed with wrong items: ΣX = N·X̄ − Σwrong + Σright.
+
+    Replacing items keeps N; removing items (right empty) or adding items changes N.
+    """
+    wrong, right = list(wrong), list(right)
+    total = n * mean - sum(wrong) + sum(right)
+    n_new = n - len(wrong) + len(right)
+    return {"incorrect_sum": n * mean, "correct_sum": total, "n": n_new, "correct_mean": total / n_new}
+
+
+def empirical_mode(x) -> float:
+    """Karl Pearson's empirical relation for moderately skewed data: Mode ≈ 3·Median − 2·Mean."""
+    return 3 * median(x) - 2 * mean_direct(x)
+
+
+# ---------------------------------------------------------------- discrete series
+
+def discrete_table(x) -> pd.DataFrame:
+    """Discrete frequency distribution: each distinct value X with f and cf (ascending X)."""
+    a = _arr(x)
+    vals, f = np.unique(a, return_counts=True)
+    t = pd.DataFrame({"X": vals, "f": f})
+    t["cf"] = t["f"].cumsum()
+    t["rel_f_pct"] = t["f"] / t["f"].sum() * 100
+    return t
+
+
+def discrete_from_counts(values, freqs) -> pd.DataFrame:
+    t = pd.DataFrame({"X": np.asarray(values, float), "f": np.asarray(freqs, int)}).sort_values("X", ignore_index=True)
+    t["cf"] = t["f"].cumsum()
+    t["rel_f_pct"] = t["f"] / t["f"].sum() * 100
+    return t
+
+
+def discrete_mean(t: pd.DataFrame, assumed: float | None = None) -> dict:
+    """Direct ΣfX/N and short-cut A + Σfd/N (d = X − A)."""
+    n = t["f"].sum()
+    direct = (t["f"] * t["X"]).sum() / n
+    if assumed is None:
+        assumed = float(t.loc[t["f"].idxmax(), "X"])
+    shortcut = assumed + (t["f"] * (t["X"] - assumed)).sum() / n
+    return {"direct": float(direct), "shortcut": float(shortcut), "assumed_mean": assumed}
+
+
+def discrete_quantile(t: pd.DataFrame, k: int, parts: int) -> float:
+    """Size of the k(N+1)/parts-th item: the X whose cf first equals or exceeds that position."""
+    n = t["f"].sum()
+    pos = k * (n + 1) / parts
+    row = int(np.argmax(t["cf"].to_numpy() >= min(pos, n)))
+    return float(t["X"].iloc[row])
+
+
+def discrete_median(t: pd.DataFrame) -> float:
+    return discrete_quantile(t, 1, 2)
+
+
+def discrete_mode(t: pd.DataFrame) -> list[float]:
+    """Value(s) with the highest frequency (more than one = multimodal)."""
+    return t.loc[t["f"] == t["f"].max(), "X"].astype(float).tolist()
+
+
+def discrete_std(t: pd.DataFrame, assumed: float | None = None) -> dict:
+    """Actual-mean σ = √(Σfx²/N) and assumed-mean σ = √(Σfd²/N − (Σfd/N)²); both must agree."""
+    n = t["f"].sum()
+    m = (t["f"] * t["X"]).sum() / n
+    actual = math.sqrt((t["f"] * (t["X"] - m) ** 2).sum() / n)
+    if assumed is None:
+        assumed = float(t.loc[t["f"].idxmax(), "X"])
+    d = t["X"] - assumed
+    am = math.sqrt((t["f"] * d ** 2).sum() / n - ((t["f"] * d).sum() / n) ** 2)
+    return {"actual_mean_method": actual, "assumed_mean_method": am}
+
+
+def discrete_summary(t: pd.DataFrame) -> dict:
+    m = discrete_mean(t)
+    q1, med, q3 = discrete_quantile(t, 1, 4), discrete_median(t), discrete_quantile(t, 3, 4)
+    sd = discrete_std(t)["actual_mean_method"]
+    return {"n": int(t["f"].sum()), "mean": m["direct"], "mean_shortcut": m["shortcut"], "median": med,
+            "mode": discrete_mode(t), "q1": q1, "q3": q3, "d1": discrete_quantile(t, 1, 10),
+            "d9": discrete_quantile(t, 9, 10), "range": float(t["X"].max() - t["X"].min()),
+            "iqr": q3 - q1, "quartile_deviation": (q3 - q1) / 2, "std": sd,
+            "coef_variation_pct": sd / m["direct"] * 100 if m["direct"] else float("nan")}
+
+
+# ---------------------------------------------------------------- moments
+
+def raw_moment(x, r: int, about: float = 0.0) -> float:
+    """μ'_r = Σ(X − A)^r / N, moments about an arbitrary origin A (A = 0: about the origin)."""
+    a = _arr(x)
+    return float(((a - about) ** r).sum() / a.size)
+
+
+def moments(x) -> dict:
+    """First four moments about the origin and about the mean, β1, β2 and γ1, γ2.
+
+    Central moments are also derived from raw moments with the standard conversion
+    (μ2 = μ'2 − μ'1², μ3 = μ'3 − 3μ'2μ'1 + 2μ'1³, μ4 = μ'4 − 4μ'3μ'1 + 6μ'2μ'1² − 3μ'1⁴)
+    so the two routes can be checked against each other.
+    """
+    r1, r2, r3, r4 = (raw_moment(x, r) for r in (1, 2, 3, 4))
+    m2, m3, m4 = (central_moment(x, r) for r in (2, 3, 4))
+    conv = {"mu2": r2 - r1 ** 2, "mu3": r3 - 3 * r2 * r1 + 2 * r1 ** 3,
+            "mu4": r4 - 4 * r3 * r1 + 6 * r2 * r1 ** 2 - 3 * r1 ** 4}
+    b1 = m3 ** 2 / m2 ** 3
+    b2 = m4 / m2 ** 2
+    return {"raw": {"mu1'": r1, "mu2'": r2, "mu3'": r3, "mu4'": r4},
+            "central": {"mu1": central_moment(x, 1), "mu2": m2, "mu3": m3, "mu4": m4},
+            "central_from_raw": conv,
+            "beta1": b1, "beta2": b2, "gamma1": math.copysign(math.sqrt(b1), m3), "gamma2": b2 - 3}
+
+
 # ---------------------------------------------------------------- one-call summary
 
 def summary(x) -> dict:
