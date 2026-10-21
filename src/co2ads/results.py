@@ -1,0 +1,236 @@
+"""Every analysis applied to the real data. The app, report, slides and viva guide all read
+their numbers from here (via scripts/export_results.py -> docs/results.json), so no
+finding is ever typed in by hand.
+
+Each function takes the clean DataFrame and returns a dict (DataFrames allowed).
+"""
+
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+from scipy import stats
+
+from . import config
+from . import correlation as cr
+from . import data
+from . import descriptive as ds
+from . import inference as inf
+from . import lof as lofm
+from . import regression as rg
+from . import timeseries as ts
+
+Y, G, B = config.LATEST_YEAR, config.GDP_YEAR, config.BASE_YEAR
+
+
+# ---------------------------------------------------------------- research questions 1–4
+
+def global_trend(df: pd.DataFrame) -> dict:
+    w = data.world_series(df)
+    w_pop = data.world_series(df, "population")
+    peak_year = int(w.idxmax())
+    return {
+        "series": w,
+        "first_year": int(w.index.min()),
+        "co2_1950": float(w.loc[1950]), "co2_1990": float(w.loc[1990]), "co2_base": float(w.loc[B]),
+        "co2_latest": float(w.loc[Y]),
+        "change_1990_latest_pct": float((w.loc[Y] / w.loc[1990] - 1) * 100),
+        "multiple_1950_latest": float(w.loc[Y] / w.loc[1950]),
+        "peak_year": peak_year, "peak_value": float(w.max()),
+        "covid_drop_pct": float((w.loc[2020] / w.loc[2019] - 1) * 100),
+        "rebound_2021_pct": float((w.loc[2021] / w.loc[2020] - 1) * 100),
+        "per_capita_latest": float(w.loc[Y] * 1e6 / w_pop.loc[Y]),
+        "cumulative_latest": float(data.world_series(df, "cumulative_co2").loc[Y]),
+    }
+
+
+def top_emitters(df: pd.DataFrame, n: int = 10) -> dict:
+    cs = data.cross_section(df, Y, ["co2"])
+    world = data.world_series(df).loc[Y]
+    cs["share_pct"] = cs["co2"] / world * 100
+    cs["rank_total"] = cs["co2"].rank(ascending=False, method="min").astype(int)
+    pc = data.cross_section(df, Y, ["co2_per_capita"])
+    pc["rank_per_capita"] = pc["co2_per_capita"].rank(ascending=False, method="min").astype(int)
+    top = cs.nlargest(n, "co2").merge(pc[["country", "co2_per_capita", "rank_per_capita"]], on="country", how="left")
+    cum = data.cross_section(df, Y, ["cumulative_co2"])
+    cum["share_pct"] = cum["cumulative_co2"] / data.world_series(df, "cumulative_co2").loc[Y] * 100
+    return {
+        "table": top[["country", "continent", "co2", "share_pct", "rank_total", "co2_per_capita", "rank_per_capita", "population"]],
+        "top_n_share_pct": float(top["share_pct"].sum()),
+        "top3_share_pct": float(top["share_pct"].head(3).sum()),
+        "cumulative_top": cum.nlargest(n, "cumulative_co2")[["country", "cumulative_co2", "share_pct"]],
+        "per_capita_top": pc.nlargest(n, "co2_per_capita")[["country", "continent", "co2_per_capita", "population"]],
+        "n_countries": int(len(cs)),
+    }
+
+
+def changes(df: pd.DataFrame, min_base_mt: float = 10.0) -> dict:
+    p = data.paired_years(df, "co2", B, Y)
+    p["abs_change"] = p[f"co2_{Y}"] - p[f"co2_{B}"]
+    big = p[p[f"co2_{B}"] >= min_base_mt].copy()
+    big["pct_change"] = (big[f"co2_{Y}"] / big[f"co2_{B}"] - 1) * 100
+    cols = ["country", "continent", f"co2_{B}", f"co2_{Y}", "abs_change"]
+    return {
+        "n_pairs": int(len(p)), "n_pct_eligible": int(len(big)), "min_base_mt": min_base_mt,
+        "abs_increase": p.nlargest(10, "abs_change")[cols],
+        "abs_decrease": p.nsmallest(10, "abs_change")[cols],
+        "pct_increase": big.nlargest(10, "pct_change")[cols + ["pct_change"]],
+        "pct_decrease": big.nsmallest(10, "pct_change")[cols + ["pct_change"]],
+        "n_decreased": int((p["abs_change"] < 0).sum()), "n_increased": int((p["abs_change"] > 0).sum()),
+    }
+
+
+# ---------------------------------------------------------------- Module 2: distribution of per-capita CO2
+
+def per_capita_distribution(df: pd.DataFrame) -> dict:
+    cs = data.cross_section(df, Y, ["co2_per_capita"])
+    x = cs["co2_per_capita"]
+    t = ds.frequency_table(x)
+    gm = ds.grouped_mean(t)
+    world_pc = global_trend(df)["per_capita_latest"]
+    by_cont = cs.dropna(subset=["continent"]).groupby("continent")["co2_per_capita"].agg(["count", "mean"])
+    pop_weighted = ds.weighted_mean(cs["co2_per_capita"], cs["population"])
+    return {
+        "data": cs, "summary": ds.summary(x), "freq_table": t, "box": ds.box_plot(x),
+        "outliers": ds.iqr_outliers(cs, "co2_per_capita")[["country", "continent", "co2_per_capita", "population"]],
+        "grouped": {"mean_direct": gm["direct"], "mean_step": gm["step_deviation"], "assumed_mean": gm["assumed_mean"],
+                    "median": ds.grouped_median(t), "mode": ds.grouped_mode(t),
+                    "q1": ds.grouped_quantile(t, 1, 4), "q3": ds.grouped_quantile(t, 3, 4),
+                    "std": ds.grouped_std(t)},
+        "population_weighted_mean": pop_weighted,
+        "world_per_capita": world_pc,
+        "by_continent": by_cont,
+        "combined_mean_check": ds.combined_mean(by_cont["mean"], by_cont["count"]),
+        "mean_excl_antarctica": float(cs.dropna(subset=["continent"])["co2_per_capita"].mean()),
+        "log_summary": ds.summary(np.log10(x)),
+    }
+
+
+# ---------------------------------------------------------------- Module 2.4: correlation
+
+CORR_COLS = ["co2_per_capita", "gdp_per_capita", "energy_per_capita", "population", "co2"]
+
+
+def relationships(df: pd.DataFrame) -> dict:
+    cs = data.cross_section(df, G, ["co2_per_capita", "gdp_per_capita"])
+    cs = cs.merge(data.cross_section(df, G, ["energy_per_capita"])[["country", "energy_per_capita"]], on="country", how="left")
+    cs = cs.merge(data.cross_section(df, G, ["co2"])[["country", "co2"]], on="country", how="left")
+    raw = cr.analyse(cs["gdp_per_capita"], cs["co2_per_capita"])
+    log = cr.analyse(np.log10(cs["gdp_per_capita"]), np.log10(cs["co2_per_capita"]))
+    e = cs.dropna(subset=["energy_per_capita"])
+    energy_log = cr.analyse(np.log10(e["energy_per_capita"]), np.log10(e["co2_per_capita"]))
+    logged = cs[CORR_COLS].apply(np.log10)
+    return {
+        "data": cs, "gdp_raw": raw, "gdp_log": log, "energy_log": energy_log,
+        "matrix_raw": cr.correlation_matrix(cs, CORR_COLS), "matrix_log": cr.correlation_matrix(logged, CORR_COLS),
+        "pair_counts": cr.pair_counts(cs, CORR_COLS),
+        "central_point": cr.central_data_point(cs, ["gdp_per_capita", "co2_per_capita"]),
+        "farthest_from_centre": cs.assign(dist=cr.distance_from_centre(cs, ["gdp_per_capita", "co2_per_capita"]))
+                                  .nlargest(5, "dist")[["country", "gdp_per_capita", "co2_per_capita", "dist"]],
+    }
+
+
+# ---------------------------------------------------------------- Module 3: inference
+
+def inference(df: pd.DataFrame) -> dict:
+    cs = data.cross_section(df, Y, ["co2_per_capita"])
+    x = cs["co2_per_capita"].to_numpy()
+    world_pc = global_trend(df)["per_capita_latest"]
+    pc = data.paired_years(df, "co2_per_capita", B, Y)
+    with_cont = cs.dropna(subset=["continent"]).assign(log_pc=lambda d: np.log10(d["co2_per_capita"]))
+    groups = {k: v["log_pc"].to_numpy() for k, v in with_cont.groupby("continent")}
+
+    # Two-way ANOVA without replication: continent (rows) × year (columns),
+    # cell = population-weighted continental CO2 per person (Σ CO2 / Σ population of its countries).
+    years = [1990, 2000, 2010, 2020, Y]
+    c = data.countries(df)
+    c = c[c["year"].isin(years) & c["continent"].notna()].dropna(subset=["co2", "population"])
+    agg = c.groupby(["continent", "year"])[["co2", "population"]].sum()
+    mat = (agg["co2"] * 1e6 / agg["population"]).unstack("year")
+    mat.index.name, mat.columns.name = "continent", "year"
+
+    # Poisson suitability: yearly count of countries (≥1 Mt) whose emissions fell by more than 10%.
+    cc = data.countries(df)
+    cc = cc[(cc["year"].between(1991, Y)) & (cc["co2"] >= 1)]
+    counts = cc.assign(drop=cc["co2_growth_prct"] < -10).groupby("year")["drop"].sum()
+
+    return {
+        "ci_mean": inf.ci_mean(x),
+        "bootstrap_median": {k: v for k, v in rg.bootstrap_ci(x, np.median, seed=config.SEED).items() if k != "distribution"},
+        "empirical_raw": inf.empirical_rule(x), "empirical_log": inf.empirical_rule(np.log10(x)),
+        "clt": inf.clt_simulation(x, n=30, reps=10000, seed=config.SEED),
+        "z_test": inf.z_test_mean(x, world_pc),
+        "paired": {**inf.t_test_paired(pc[f"co2_per_capita_{B}"], pc[f"co2_per_capita_{Y}"]),
+                   "mean_before": float(pc[f"co2_per_capita_{B}"].mean()), "mean_after": float(pc[f"co2_per_capita_{Y}"].mean())},
+        "paired_data": pc,
+        "independent": inf.t_test_independent(groups["Europe"], groups["Asia"]),
+        "independent_back": {"europe_geo_mean": float(10 ** groups["Europe"].mean()), "asia_geo_mean": float(10 ** groups["Asia"].mean())},
+        # Sensitivity check: variances differ a lot, so also report Welch's unequal-variance t.
+        "independent_welch_p": float(stats.ttest_ind(groups["Europe"], groups["Asia"], equal_var=False).pvalue),
+        "anova": inf.one_way_anova(groups),
+        "anova_data": with_cont,
+        "two_way": inf.two_way_anova(mat), "two_way_matrix": mat,
+        "errors": inf.error_rate_simulation(x, n=40, shift=1.5, reps=10000, seed=config.SEED),
+        "poisson": inf.poisson_check(counts.to_numpy()), "poisson_counts": counts,
+    }
+
+
+# ---------------------------------------------------------------- Module 4 (+ Module 1 evaluation)
+
+def regression(df: pd.DataFrame) -> dict:
+    cs = data.cross_section(df, G, ["co2_per_capita", "gdp_per_capita", "energy_per_capita"])
+    lx1, lx2, ly = (np.log10(cs[c]).to_numpy() for c in ("gdp_per_capita", "energy_per_capita", "co2_per_capita"))
+    simple = rg.simple_regression(lx1, ly)
+    multi = rg.multiple_regression_2(lx1, lx2, ly)
+    back = {
+        "simple_mape_original": rg.mape(cs["co2_per_capita"], 10 ** simple["fitted"]),
+        "multi_mape_original": rg.mape(cs["co2_per_capita"], 10 ** multi["fitted"]),
+    }
+    X1, X2 = lx1.reshape(-1, 1), np.column_stack([lx1, lx2])
+    return {
+        "data": cs.assign(fitted_simple=10 ** simple["fitted"], fitted_multi=10 ** multi["fitted"]),
+        "simple": simple, "multiple": multi, "back_transformed": back,
+        "cv_simple": rg.kfold_cv(X1, ly, k=5, seed=config.SEED),
+        "cv_multi": rg.kfold_cv(X2, ly, k=5, seed=config.SEED),
+        "holdout_multi": rg.holdout(X2, ly, seed=config.SEED),
+        "normalised_preview": pd.DataFrame({"country": cs["country"], "gdp_pc": cs["gdp_per_capita"],
+                                            "gdp_pc_minmax": rg.min_max(cs["gdp_per_capita"])}).head(8),
+    }
+
+
+# ---------------------------------------------------------------- Module 5
+
+def outliers_lof(df: pd.DataFrame, k: int = 10) -> dict:
+    cs = data.cross_section(df, G, ["co2_per_capita", "gdp_per_capita"])
+    cs = cs.assign(log_co2_pc=np.log10(cs["co2_per_capita"]), log_gdp_pc=np.log10(cs["gdp_per_capita"]))
+    table = lofm.lof_table(cs, ["log_gdp_pc", "log_co2_pc"], k=k)
+    table = table.merge(cs[["country", "co2_per_capita", "gdp_per_capita", "continent"]], on="country")
+    iqr_set = set(ds.iqr_outliers(cs, "co2_per_capita")["country"])
+    top = table.head(10)
+    return {"k": k, "n": int(len(table)), "table": table, "threshold": 1.5,
+            "n_flagged": int((table["lof"] > 1.5).sum()),
+            "iqr_outliers": sorted(iqr_set), "lof_top10_also_iqr": sorted(set(top["country"]) & iqr_set)}
+
+
+# ---------------------------------------------------------------- Module 6
+
+def time_series(df: pd.DataFrame) -> dict:
+    w = data.world_series(df, start=1950)
+    comp = ts.holdout_comparison(w, train_end=2019, k=3, trend_start=2000)
+    full = w.loc[2000:]
+    fit = rg.simple_regression(full.index.to_numpy(float), full.to_numpy())
+    future = pd.Series({yr: fit["slope"] * yr + fit["intercept"] for yr in range(Y + 1, 2031)})
+    yearly = w.diff()
+    return {
+        "series": w, "cma5": pd.Series(ts.centred_moving_average(w.to_numpy(), 5), index=w.index),
+        "comparison": comp["table"], "detail": comp["detail"], "trend_fit_train": comp["trend_fit"],
+        "trend_full": {"slope": fit["slope"], "intercept": fit["intercept"], "r2": fit["metrics"]["R2"]},
+        "projection": future,
+        "mean_annual_change_2000_latest": float(yearly.loc[2001:].mean()),
+        "decomposition_note": "Annual data: no seasonal component exists; only the trend (centred MA) is estimated.",
+    }
+
+
+def quality_summary(df: pd.DataFrame) -> dict:
+    from . import quality
+    return quality.report(data.load_raw(), df)

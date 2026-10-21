@@ -1,0 +1,25 @@
+{
+  "downloaded_utc": "2026-10-21T01:30:17Z",
+  "files": {
+    "owid_co2.csv": {
+      "url": "https://catalog.ourworldindata.org/emissions/owid_co2/owid_co2.csv",
+      "server_last_modified": "Wed, 30 Sep 2026 14:42:03 GMT",
+      "bytes": 20199517,
+      "sha256": "f44d25338761496ac1e5a4703f137e05048aba8af73f0ee27bc053715a23e096",
+      "rows": 50411,
+      "columns": 79
+    },
+    "owid_co2.codebook.csv": {
+      "url": "https://catalog.ourworldindata.org/emissions/owid_co2/owid_co2.codebook.csv",
+      "sha256": "964b53ddef4f06a189ffda83a39ba605458864a9a5a01646b8b04ad82bb72c90"
+    },
+    "owid_continents.csv": {
+      "url": "https://ourworldindata.org/grapher/continents-according-to-our-world-in-data.csv?v=1&csvType=full&useColumnShortNames=true",
+      "server_last_modified": "Wed, 21 Oct 2026 05:14:38 GMT",
+      "sha256": "18d4546aa5da19d3e6e810c742dc26bf3e86deae198dd3b5d08f65ad9501ee8f",
+      "purpose": "Country -> continent lookup used only to form groups for ANOVA / group comparisons"
+    }
+  },
+  "license": "Our World in Data: CC BY 4.0. Underlying CO2 data from the Global Carbon Project (Global Carbon Budget); population, GDP and energy series from the sources listed in the codebook.",
+  "note": "Raw files are never modified. All cleaning happens in src/co2ads/data.py and is written to data/processed/."
+}
