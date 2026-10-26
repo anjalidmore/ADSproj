@@ -7366,6 +7366,14 @@
   ],
   "threshold": 1.5,
   "n_flagged": 6,
+  "flagged": [
+   "Burundi",
+   "North Korea",
+   "Norway",
+   "Qatar",
+   "Switzerland",
+   "Venezuela"
+  ],
   "iqr_outliers": [
    "Australia",
    "Bahrain",
@@ -7380,6 +7388,117 @@
   "lof_top10_also_iqr": [
    "Qatar",
    "Trinidad and Tobago"
+  ],
+  "vs_iqr": [
+   {
+    "group": "both",
+    "n": 1,
+    "countries": "Qatar"
+   },
+   {
+    "group": "LOF only",
+    "n": 5,
+    "countries": "Burundi, North Korea, Norway, Switzerland, Venezuela"
+   },
+   {
+    "group": "IQR only",
+    "n": 8,
+    "countries": "Australia, Bahrain, Kuwait, Oman, Saudi Arabia, Trinidad and Tobago, United Arab Emirates, United States"
+   },
+   {
+    "group": "neither",
+    "n": 150,
+    "countries": ""
+   }
+  ],
+  "iqr_outlier_lof_scores": [
+   {
+    "country": "Qatar",
+    "co2_per_capita": 37.88961,
+    "lof": 2.369775,
+    "lof_rank": 1
+   },
+   {
+    "country": "Trinidad and Tobago",
+    "co2_per_capita": 25.063381,
+    "lof": 1.439727,
+    "lof_rank": 10
+   },
+   {
+    "country": "Bahrain",
+    "co2_per_capita": 24.66764,
+    "lof": 1.280127,
+    "lof_rank": 15
+   },
+   {
+    "country": "United Arab Emirates",
+    "co2_per_capita": 20.220825,
+    "lof": 1.225097,
+    "lof_rank": 23
+   },
+   {
+    "country": "Kuwait",
+    "co2_per_capita": 25.242083,
+    "lof": 1.169721,
+    "lof_rank": 31
+   },
+   {
+    "country": "Oman",
+    "co2_per_capita": 16.488375,
+    "lof": 1.151315,
+    "lof_rank": 35
+   },
+   {
+    "country": "Australia",
+    "co2_per_capita": 14.65893,
+    "lof": 1.118842,
+    "lof_rank": 46
+   },
+   {
+    "country": "Saudi Arabia",
+    "co2_per_capita": 20.729954,
+    "lof": 1.087197,
+    "lof_rank": 60
+   },
+   {
+    "country": "United States",
+    "co2_per_capita": 14.802047,
+    "lof": 1.063689,
+    "lof_rank": 70
+   }
+  ],
+  "sklearn_check": {
+   "k": 10,
+   "n": 164,
+   "max_abs_diff": 0.0,
+   "n_tied_neighbourhoods": 0,
+   "same_top10": true
+  },
+  "k_sensitivity": [
+   {
+    "k": 5,
+    "n_flagged": 9,
+    "top5": "Qatar, Norway, Venezuela, Singapore, North Korea"
+   },
+   {
+    "k": 10,
+    "n_flagged": 6,
+    "top5": "Qatar, North Korea, Norway, Switzerland, Venezuela"
+   },
+   {
+    "k": 15,
+    "n_flagged": 6,
+    "top5": "Qatar, North Korea, Burundi, Switzerland, Trinidad and Tobago"
+   },
+   {
+    "k": 20,
+    "n_flagged": 2,
+    "top5": "Qatar, North Korea, Trinidad and Tobago, Burundi, United Arab Emirates"
+   }
+  ],
+  "flagged_at_every_k": [
+   "North Korea",
+   "Qatar"
   ]
  },
  "time_series": {
@@ -7618,6 +7737,133 @@
    "intercept": -1237848.417407,
    "r2": 0.950489,
    "n": 20
+  },
+  "comparison_fixed": [
+   {
+    "method": "Average method",
+    "n": 5,
+    "MAE": 16721.68764,
+    "RMSE": 16764.275759,
+    "MAPE": 44.833442,
+    "MASE": 32.364517
+   },
+   {
+    "method": "Moving average (k=3)",
+    "n": 5,
+    "MAE": 1226.7692,
+    "RMSE": 1359.970485,
+    "MAPE": 3.281835,
+    "MASE": 2.374389
+   },
+   {
+    "method": "Naïve (last value)",
+    "n": 5,
+    "MAE": 1021.7468,
+    "RMSE": 1205.205622,
+    "MAPE": 2.763667,
+    "MASE": 1.977572
+   },
+   {
+    "method": "Linear trend (2000–2019)",
+    "n": 5,
+    "MAE": 2804.540929,
+    "RMSE": 2835.618346,
+    "MAPE": 7.567351,
+    "MASE": 5.428137
+   }
+  ],
+  "detail_fixed": [
+   {
+    "year": 2020,
+    "actual": 35158.23,
+    "Average method": 20527.40956,
+    "Moving average (k=3)": 36598.393333,
+    "Naïve (last value)": 37086.566,
+    "Linear trend (2000–2019)": 38789.640053
+   },
+   {
+    "year": 2021,
+    "actual": 36866.863,
+    "Average method": 20527.40956,
+    "Moving average (k=3)": 36598.393333,
+    "Naïve (last value)": 37086.566,
+    "Linear trend (2000–2019)": 39421.639091
+   },
+   {
+    "year": 2022,
+    "actual": 37527.773,
+    "Average method": 20527.40956,
+    "Moving average (k=3)": 36598.393333,
+    "Naïve (last value)": 37086.566,
+    "Linear trend (2000–2019)": 40053.638129
+   },
+   {
+    "year": 2023,
+    "actual": 38094.04,
+    "Average method": 20527.40956,
+    "Moving average (k=3)": 36598.393333,
+    "Naïve (last value)": 37086.566,
+    "Linear trend (2000–2019)": 40685.637168
+   },
+   {
+    "year": 2024,
+    "actual": 38598.58,
+    "Average method": 20527.40956,
+    "Moving average (k=3)": 36598.393333,
+    "Naïve (last value)": 37086.566,
+    "Linear trend (2000–2019)": 41317.636206
+   }
+  ],
+  "covid": {
+   "co2_2019": 37086.566,
+   "co2_2020": 35158.23,
+   "change": -1928.336,
+   "change_pct": -5.199554,
+   "back_above_2019_in": 2022,
+   "errors_one_step": [
+    {
+     "method": "Average method",
+     "APE shock year (%)": 41.614212,
+     "MAPE other years (%)": 44.207084
+    },
+    {
+     "method": "Moving average (k=3)",
+     "APE shock year (%)": 4.096234,
+     "MAPE other years (%)": 2.886039
+    },
+    {
+     "method": "Naïve (last value)",
+     "APE shock year (%)": 5.484736,
+     "MAPE other years (%)": 2.297343
+    },
+    {
+     "method": "Linear trend (2000–2019)",
+     "APE shock year (%)": 10.328762,
+     "MAPE other years (%)": 6.876998
+    }
+   ],
+   "errors_fixed": [
+    {
+     "method": "Average method",
+     "APE shock year (%)": 41.614212,
+     "MAPE other years (%)": 45.638249
+    },
+    {
+     "method": "Moving average (k=3)",
+     "APE shock year (%)": 4.096234,
+     "MAPE other years (%)": 3.078236
+    },
+    {
+     "method": "Naïve (last value)",
+     "APE shock year (%)": 5.484736,
+     "MAPE other years (%)": 2.0834
+    },
+    {
+     "method": "Linear trend (2000–2019)",
+     "APE shock year (%)": 10.328762,
+     "MAPE other years (%)": 6.876998
+    }
+   ]
   },
   "trend_full": {
    "slope": 525.507377,
@@ -8452,8 +8698,25 @@
     "Also IQR outliers (of top 10)": "Qatar, Trinidad and Tobago"
    },
    "interpretation": "LOF finds countries that are unusual for their neighbourhood: very high emitters for their income (Qatar), and also low emitters for their income (Switzerland, Sweden, North Korea's low GDP with relatively high CO₂). The IQR rule only sees one variable and only high values.",
-   "validation": "Reproduces the 4-point slide example (LOF(d) = 2.0); matches sklearn LocalOutlierFactor(metric='manhattan').",
-   "code": "src/co2ads/lof.py::lof"
+   "validation": "Reproduces the 4-point slide example (LOF(d) = 2.0). On these 164 countries it matches sklearn LocalOutlierFactor(metric='manhattan') to 1e-09 (0 tied neighbourhoods, same top 10: True).",
+   "code": "src/co2ads/lof.py::lof, sklearn_check"
+  },
+  {
+   "module": "M5 Anomaly Detection",
+   "concept": "LOF vs the IQR (box-plot) rule",
+   "variables": "LOF > 1.5 on both variables vs IQR fences on CO₂ per person alone (2022, n = 164)",
+   "objective": "",
+   "formula": "\\text{IQR outlier: } x<Q_1-1.5\\,IQR \\ \\text{or}\\ x>Q_3+1.5\\,IQR",
+   "output": {
+    "both": "1 (Qatar)",
+    "LOF only": "5 (Burundi, North Korea, Norway, Switzerland, Venezuela)",
+    "IQR only": "8 (Australia, Bahrain, Kuwait, Oman, Saudi Arabia, Trinidad and Tobago, United Arab Emirates, United States)",
+    "neither": "150",
+    "Flagged at every k (5, 10, 15, 20)": "North Korea, Qatar"
+   },
+   "interpretation": "The methods agree only on Qatar. The IQR-only countries (Gulf states, Australia, US) are high emitters but sit in a dense cluster of rich, high-CO₂ countries, so their local density is normal (LOF close to 1). LOF-only countries are unusual for their income, including low emitters the one-sided IQR rule cannot see.",
+   "validation": "IQR fences use the course quartile rule k(N+1)/4; the LOF threshold 1.5 is a convention, so k = 5–20 is reported as a sensitivity check.",
+   "code": "src/co2ads/results.py::outliers_lof"
   },
   {
    "module": "M6 Time Series",
@@ -8499,6 +8762,23 @@
    "interpretation": "MASE above 1 for every method shows that, over 2020–2024, simply carrying forward last year's value is hard to beat for annual emissions.",
    "validation": "Hand formulas; slide examples reproduced.",
    "code": "src/co2ads/timeseries.py::evaluate, mase"
+  },
+  {
+   "module": "M6 Time Series",
+   "concept": "True hold-out (fixed origin) and the 2020 COVID shock",
+   "variables": "World CO₂; every forecast made from data up to 2019 only",
+   "objective": "",
+   "formula": "\\hat y_{2019+h} = \\bar y_{1950..2019}\\ \\text{(average)},\\ \\tfrac13(y_{2017}+y_{2018}+y_{2019})\\ \\text{(MA)},\\ y_{2019}\\ \\text{(naïve)}",
+   "output": {
+    "Average method": "MAE 16,722 Mt, MAPE 44.83%, MASE 32.36",
+    "Moving average (k=3)": "MAE 1,227 Mt, MAPE 3.28%, MASE 2.37",
+    "Naïve (last value)": "MAE 1,022 Mt, MAPE 2.76%, MASE 1.98",
+    "Linear trend (2000–2019)": "MAE 2,805 Mt, MAPE 7.57%, MASE 5.43",
+    "2020 drop": "-1,928 Mt (-5.2%); back above 2019 in 2022"
+   },
+   "interpretation": "One-step-ahead forecasts (course definition) see each hold-out year once it has happened; the fixed-origin test does not. Best by MASE: Naïve (last value). No method anticipates the 2020 fall (2020 is one step ahead in both tests, so each method's 2020 error is the same in both), and the trend line, which assumes growth continues, is furthest off. Emissions rebounded to the 2019 level, so a flat forecast from 2019 did well afterwards.",
+   "validation": "Forecasts are unchanged when hold-out values are altered (test); trend errors identical in both tables.",
+   "code": "src/co2ads/timeseries.py::fixed_origin_forecasts, shock_errors"
   }
  ]
 }

@@ -100,11 +100,25 @@ def evaluate(actual, forecast, scale_series) -> dict:
             "MASE": mase(a, f, scale_series)}
 
 
-def holdout_comparison(series: pd.Series, train_end: int, k: int = 3, trend_start: int | None = None) -> dict:
-    """Compare methods on the years after `train_end`.
+def fixed_origin_forecasts(train, horizon: int, k: int = 3) -> dict[str, np.ndarray]:
+    """Forecasts for the next `horizon` periods made at the end of `train`, without seeing any later value.
 
-    Average / moving average / naïve: one-step-ahead (each forecast uses actual values up to t−1).
-    Linear trend: least-squares line fitted on [trend_start, train_end] and extrapolated (multi-step).
+    Average and moving average stay flat at their last available value (the mean of all
+    training values / of the last k training values); naïve repeats the last training value.
+    """
+    y = np.asarray(train, float)
+    return {"Average method": np.full(horizon, y.mean()),
+            f"Moving average (k={k})": np.full(horizon, y[-k:].mean()),
+            "Naïve (last value)": np.full(horizon, y[-1])}
+
+
+def holdout_comparison(series: pd.Series, train_end: int, k: int = 3, trend_start: int | None = None) -> dict:
+    """Compare methods on the years after `train_end`, in two ways.
+
+    `table` (course definition): average / moving average / naïve are one-step-ahead, so each
+    forecast uses actual values up to t−1, including hold-out years already observed.
+    `table_fixed` (true hold-out): every forecast is made once, from data up to `train_end` only.
+    The least-squares trend (fitted on [trend_start, train_end]) is the same in both.
     MASE is scaled by the naïve error over the training period.
     """
     s = series.sort_index()
@@ -122,8 +136,23 @@ def holdout_comparison(series: pd.Series, train_end: int, k: int = 3, trend_star
         "Naïve (last value)": naive_forecast(y),
         f"Linear trend ({trend_start}–{train_end})": trend_fc,
     }
-    rows = [{"method": name, **evaluate(y[test], f[test], train_y)} for name, f in forecasts.items()]
-    table = pd.DataFrame(rows).set_index("method")
+    trend_name = f"Linear trend ({trend_start}–{train_end})"
+    fixed = {**fixed_origin_forecasts(train_y, int(test.sum()), k), trend_name: trend_fc[test]}
+
+    def score(fc: dict) -> pd.DataFrame:
+        return pd.DataFrame([{"method": n, **evaluate(y[test], f, train_y)} for n, f in fc.items()]).set_index("method")
+
+    table = score({n: f[test] for n, f in forecasts.items()})
     detail = pd.DataFrame({"year": years[test], "actual": y[test], **{n: f[test] for n, f in forecasts.items()}})
-    return {"table": table, "detail": detail, "trend_fit": {"slope": fit["slope"], "intercept": fit["intercept"],
-            "r2": fit["metrics"]["R2"], "n": fit["n"]}, "forecasts": forecasts, "years": years}
+    detail_fixed = pd.DataFrame({"year": years[test], "actual": y[test], **fixed})
+    return {"table": table, "detail": detail, "table_fixed": score(fixed), "detail_fixed": detail_fixed,
+            "trend_fit": {"slope": fit["slope"], "intercept": fit["intercept"], "r2": fit["metrics"]["R2"], "n": fit["n"]},
+            "forecasts": forecasts, "forecasts_fixed": fixed, "years": years}
+
+
+def shock_errors(detail: pd.DataFrame, shock_year: int) -> pd.DataFrame:
+    """Absolute % error of each method in the shock year vs the mean over the remaining hold-out years."""
+    methods = [c for c in detail.columns if c not in ("year", "actual")]
+    ape = detail[methods].sub(detail["actual"], axis=0).abs().div(detail["actual"], axis=0) * 100
+    at = detail["year"] == shock_year
+    return pd.DataFrame({"APE shock year (%)": ape[at].iloc[0], "MAPE other years (%)": ape[~at].mean()})

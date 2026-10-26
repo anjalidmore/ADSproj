@@ -128,6 +128,13 @@ def test_lof_matches_sklearn_on_continuous_data():
     assert mine == pytest.approx(-sk.negative_outlier_factor_)
 
 
+def test_lof_sklearn_check_and_ties():
+    chk = lofm.sklearn_check(rng.normal(size=(80, 2)), k=7)
+    assert chk["max_abs_diff"] < 1e-9 and chk["n_tied_neighbourhoods"] == 0 and chk["same_top10"]
+    grid = [[0, 0], [0, 1], [1, 1], [3, 0]]  # slide points: with k = 1, b (a, c at 1) and d (a, c at 3) have ties
+    assert lofm.sklearn_check(grid, k=1)["n_tied_neighbourhoods"] == 2
+
+
 def test_kfold_uses_every_record_once():
     cv = rg.kfold_cv(X.reshape(-1, 1), Y, k=5)
     assert sum(f["n_val"] for f in cv["folds"]) == X.size

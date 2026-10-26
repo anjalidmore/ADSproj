@@ -7,7 +7,7 @@ date: "[Course name · Instructor · Submission date]"
 
 # Abstract
 
-This project applies the full Applied Data Science (ADS) syllabus — the data science process, descriptive statistics, multivariate exploration, inferential statistics, regression, anomaly detection and time-series analysis — to a real dataset of 50,411 country-year observations: the Our World in Data (OWID) CO₂ and Greenhouse Gas Emissions dataset (79 variables, 1750–2024). After separating 219 countries from regional aggregates to avoid double counting, we find that world fossil and industry CO₂ emissions reached a record 38.6 Gt in 2024, 70% above 1990, and that three countries emit 53% of the total. Emissions per person are extremely unequal and right-skewed (mean 4.63 t, median 3.21 t, kurtosis β₂ = 14.1), and close to log-normal. Continents differ significantly (one-way ANOVA F = 30.9, p < 0.001), and the average country's per-person emissions fell between 2005 and 2024 (paired t = -2.86, p = 0.005). Across countries, log GDP per person and log CO₂ per person are strongly correlated (r = 0.907). Adding energy use per person raises R² to 0.951, and GDP then becomes non-significant: the relationship runs through energy use. All 56 implemented concepts are validated against the course's worked examples and independent library implementations in an automated test suite, and are presented in an interactive Streamlit dashboard.
+This project applies the full Applied Data Science (ADS) syllabus — the data science process, descriptive statistics, multivariate exploration, inferential statistics, regression, anomaly detection and time-series analysis — to a real dataset of 50,411 country-year observations: the Our World in Data (OWID) CO₂ and Greenhouse Gas Emissions dataset (79 variables, 1750–2024). After separating 219 countries from regional aggregates to avoid double counting, we find that world fossil and industry CO₂ emissions reached a record 38.6 Gt in 2024, 70% above 1990, and that three countries emit 53% of the total. Emissions per person are extremely unequal and right-skewed (mean 4.63 t, median 3.21 t, kurtosis β₂ = 14.1), and close to log-normal. Continents differ significantly (one-way ANOVA F = 30.9, p < 0.001), and the average country's per-person emissions fell between 2005 and 2024 (paired t = -2.86, p = 0.005). Across countries, log GDP per person and log CO₂ per person are strongly correlated (r = 0.907). Adding energy use per person raises R² to 0.951, and GDP then becomes non-significant: the relationship runs through energy use. All 58 implemented concepts are validated against the course's worked examples and independent library implementations in an automated test suite, and are presented in an interactive Streamlit dashboard.
 
 # 1. Introduction
 
@@ -368,6 +368,19 @@ LOF was implemented step by step as in Module 5: Manhattan distance → k-distan
 
 Unlike the one-dimensional IQR rule, which flagged only high emitters, LOF is local and two-dimensional. It flags Qatar (extreme on both axes), but also countries whose emissions are unusual *for their income*: rich low-carbon economies (Norway, Switzerland, Sweden, Singapore), very poor countries with almost no fossil-fuel use (Burundi, DR Congo), and North Korea (high CO₂ for its very low recorded GDP). Of LOF's top ten, only Qatar, Trinidad and Tobago were also IQR outliers. The two methods answer different questions.
 
+| Flagged by | Countries | Which |
+|---|---:|---|
+| both | 1 | Qatar |
+| LOF only | 5 | Burundi, North Korea, Norway, Switzerland, Venezuela |
+| IQR only | 8 | Australia, Bahrain, Kuwait, Oman, Saudi Arabia, Trinidad and Tobago, United Arab Emirates, United States |
+| neither | 150 |  |
+
+*Table 11: LOF (> 1.5) vs the IQR rule on CO₂ per person.*
+
+The IQR-only countries are high emitters that sit inside a dense cluster of rich, high-CO₂ countries, so their local density matches their neighbours' (the United States ranks 70 of 164 by LOF, score 1.06). Because the 1.5 threshold is a convention, k was varied from 5 to 20: North Korea, Qatar stay flagged at every k.
+
+**Check against scikit-learn.** On the same 164 scaled points, `LocalOutlierFactor(n_neighbors=10, metric='manhattan')` gives the same scores (largest difference below 10⁻⁶) and the same top ten. sklearn always uses exactly k neighbours, while the slides include every point tied at the k-distance. There are 0 such ties here, so the two definitions coincide.
+
 # 9. Time-series analysis
 
 ![Forecasts on the hold-out period](figures/09_forecasts.png)
@@ -383,9 +396,22 @@ Unlike the one-dimensional IQR rule, which flagged only high emitters, LOF is lo
 | Naïve (last value) | 1,074 | 1,237 | 2.93 | 2.08 |
 | Linear trend (2000–2019) | 2,805 | 2,836 | 7.57 | 5.43 |
 
-*Table 11: Forecast accuracy on 2020–2024.*
+*Table 12: One-step-ahead forecast accuracy on 2020–2024.*
 
 The average method is useless for a trending series (44% error), exactly as the slides warn: old values never leave the average. The 2000–2019 trend line (slope 632 Mt per year, R² = 0.950) overshoots because growth slowed after about 2013 and 2020 fell sharply. The best method by MASE was **Naïve (last value)**. All MASE values exceed 1, so over these five volatile years no method beat simply carrying last year's value forward. Fitting the trend on 2000–2024 gives a slope of 526 Mt per year. Mechanically extended to 2030 that implies about 42.6 Gt, but this is an extrapolation, not a prediction: it ignores policy and technology change.
+
+**True hold-out (fixed origin).** One-step-ahead forecasts see each hold-out year once it has happened (the 2021 moving average already contains the 2020 fall). To test forecasts made only from data up to 2019, each method was also run once from 2019: the average and moving average stay flat at their 2019 values, naïve repeats 2019, and the trend line is unchanged.
+
+| Method | MAE (Mt) | RMSE (Mt) | MAPE (%) | MASE |
+|---|---:|---:|---:|---:|
+| Average method | 16,722 | 16,764 | 44.83 | 32.36 |
+| Moving average (k=3) | 1,227 | 1,360 | 3.28 | 2.37 |
+| Naïve (last value) | 1,022 | 1,205 | 2.76 | 1.98 |
+| Linear trend (2000–2019) | 2,805 | 2,836 | 7.57 | 5.43 |
+
+*Table 13: Fixed-origin forecast accuracy (data up to 2019 only) on 2020–2024.*
+
+**The 2020 COVID drop.** World emissions fell 1,928 Mt (-5.2%) from 2019 to 2020 and were back above the 2019 level by 2022. 2020 is one step ahead in both tests, so each method's 2020 error is the same in both, and no method foresaw the fall: the 2020 error was 5.5% for naïve and 10.3% for the trend, against 2.1% and 6.9% on average in 2021–2024. Because emissions returned to their 2019 level, the flat naïve forecast from 2019 was the most accurate overall (**Naïve (last value)**, MASE 1.98), while the trend line, which assumed pre-2019 growth continued, overshot every year.
 
 # 10. Validation and academic integrity
 
@@ -476,10 +502,12 @@ Possible extensions: consumption-based vs territorial emissions; decomposing cha
 | M4 Regression | Goodness of fit & overfit: R, R², adjusted R² (simple vs multiple) | `src/co2ads/regression.py::compare_models` |
 | M4 Regression | Overlap between predictors (multicollinearity flag) | `src/co2ads/regression.py::collinearity` |
 | M4 Regression | Estimate for unknown values (prediction) | `src/co2ads/regression.py::predict` |
-| M5 Anomaly Detection | Local Outlier Factor (Manhattan distance) | `src/co2ads/lof.py::lof` |
+| M5 Anomaly Detection | Local Outlier Factor (Manhattan distance) | `src/co2ads/lof.py::lof, sklearn_check` |
+| M5 Anomaly Detection | LOF vs the IQR (box-plot) rule | `src/co2ads/results.py::outliers_lof` |
 | M6 Time Series | Components & classical decomposition | `src/co2ads/timeseries.py::classical_decomposition, centred_moving_average` |
 | M6 Time Series | Average, moving-average & naïve forecasts; least-squares trend | `src/co2ads/timeseries.py::holdout_comparison` |
 | M6 Time Series | Forecast evaluation: MAE, RMSE, MAPE, MASE | `src/co2ads/timeseries.py::evaluate, mase` |
+| M6 Time Series | True hold-out (fixed origin) and the 2020 COVID shock | `src/co2ads/timeseries.py::fixed_origin_forecasts, shock_errors` |
 
 The full matrix with formulas, computed outputs, interpretations and validation is in `docs/CONCEPT_MATRIX.md` and in the dashboard's ADS Concepts Lab.
 

@@ -37,15 +37,37 @@ def lof(X, k: int) -> pd.DataFrame:
                          "lrd": lrd, "lof": score})
 
 
-def lof_table(df: pd.DataFrame, cols: list[str], k: int, label: str = "country", scale: str = "minmax") -> pd.DataFrame:
-    """LOF on scaled columns (min–max by default, Module 1 normalisation) so units don't dominate."""
+def scaled(df: pd.DataFrame, cols: list[str], scale: str = "minmax") -> np.ndarray:
+    """Min–max (Module 1 normalisation) or z-scores, so neither column's units dominate the distance."""
     X = df[cols].to_numpy(float)
     if scale == "minmax":
-        X = (X - X.min(axis=0)) / (X.max(axis=0) - X.min(axis=0))
-    elif scale == "z":
-        X = (X - X.mean(axis=0)) / X.std(axis=0)
-    out = lof(X, k)
+        return (X - X.min(axis=0)) / (X.max(axis=0) - X.min(axis=0))
+    if scale == "z":
+        return (X - X.mean(axis=0)) / X.std(axis=0)
+    return X
+
+
+def lof_table(df: pd.DataFrame, cols: list[str], k: int, label: str = "country", scale: str = "minmax") -> pd.DataFrame:
+    """LOF on scaled columns (min–max by default) so units don't dominate."""
+    out = lof(scaled(df, cols, scale), k)
     out.insert(0, label, df[label].to_numpy())
     for c in cols:
         out[c] = df[c].to_numpy()
     return out.sort_values("lof", ascending=False).reset_index(drop=True)
+
+
+def sklearn_check(X, k: int) -> dict:
+    """Compare the hand-written LOF with sklearn LocalOutlierFactor(metric='manhattan') on the same points.
+
+    sklearn always takes exactly k neighbours; the slides include every point tied at the k-distance.
+    The two can only differ when such ties exist, so these are counted too.
+    """
+    from sklearn.neighbors import LocalOutlierFactor
+
+    X = np.asarray(X, float)
+    mine = lof(X, k)
+    sk = -LocalOutlierFactor(n_neighbors=k, metric="manhattan").fit(X).negative_outlier_factor_
+    diff = np.abs(mine["lof"].to_numpy() - sk)
+    return {"k": k, "n": int(X.shape[0]), "max_abs_diff": float(diff.max()),
+            "n_tied_neighbourhoods": int((mine["n_neighbours"] > k).sum()),
+            "same_top10": bool(set(np.argsort(-mine["lof"].to_numpy())[:10]) == set(np.argsort(-sk)[:10]))}

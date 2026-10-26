@@ -1,6 +1,7 @@
 """Each formula reproduces the worked example from the course slides (page refs in comments)."""
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from co2ads import inference as inf
@@ -148,6 +149,23 @@ def test_average_and_ma_forecast_metrics():  # Module 6 slides 47–50
     assert m3["MAE"] == pytest.approx(2.67, abs=0.01)
     assert m3["MAPE"] == pytest.approx(10.60, abs=0.01)
     assert m3["MASE"] == pytest.approx(1.14, abs=0.01)
+
+
+def test_fixed_origin_forecasts_use_training_data_only():
+    y = np.array([20, 22, 21, 25, 24], float)
+    fc = ts.fixed_origin_forecasts(y, horizon=3, k=3)
+    assert fc["Average method"] == pytest.approx([22.4] * 3)
+    assert fc["Moving average (k=3)"] == pytest.approx([70 / 3] * 3)
+    assert fc["Naïve (last value)"] == pytest.approx([24] * 3)
+    s = pd.Series(np.arange(30, dtype=float) + np.r_[np.tile([0.3, -0.3], 12), [0.3, -5, 0, 0, 0, 0]], index=range(1990, 2020))
+    a = ts.holdout_comparison(s, train_end=2014, k=3)
+    b = ts.holdout_comparison(s.where(s.index <= 2014, 999), train_end=2014, k=3)
+    for name in a["forecasts_fixed"]:  # changing the hold-out values cannot change a fixed-origin forecast
+        assert a["forecasts_fixed"][name] == pytest.approx(b["forecasts_fixed"][name])
+    trend = [m for m in a["table"].index if m.startswith("Linear trend")][0]
+    assert a["table"].loc[trend, "MAE"] == pytest.approx(a["table_fixed"].loc[trend, "MAE"])
+    shock = ts.shock_errors(a["detail_fixed"], 2015)
+    assert shock.loc["Naïve (last value)", "APE shock year (%)"] == pytest.approx(abs(24.3 - 20) / 20 * 100)
 
 
 def test_poisson_pmf_hospital_example():  # Module 3 handwritten notes: μ = 4 calls

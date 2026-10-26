@@ -11,6 +11,7 @@ import streamlit as st
 
 from common import (CONTINENT_COLORS, GREEN, LIME, all_results, clean_df, config, countries_df, csv_button, data, fmt,
                     label, note, page)
+from co2ads import descriptive as ds
 from co2ads import lof as lofm
 from co2ads import regression as rg
 from co2ads import timeseries as ts
@@ -146,6 +147,31 @@ with t_lof:
         st.dataframe(tab.head(20)[["country", "continent", "co2_per_capita", "gdp_per_capita", "k_distance", "lrd", "lof"]].round(4),
                      hide_index=True, width="stretch")
         csv_button(tab, f"lof_{year}_k{k}.csv")
+
+        st.markdown("#### Check against scikit-learn")
+        chk = lofm.sklearn_check(lofm.scaled(cs, ["log_gdp_pc", "log_co2_pc"]), k)
+        k1, k2, k3 = st.columns(3)
+        k1.metric("Max |own LOF − sklearn LOF|", f"{chk['max_abs_diff']:.1e}")
+        k2.metric("Tied k-neighbourhoods", chk["n_tied_neighbourhoods"])
+        k3.metric("Same top 10", "yes" if chk["same_top10"] else "no")
+        st.caption("sklearn LocalOutlierFactor(n_neighbors=k, metric='manhattan') on the same scaled points. sklearn always uses "
+                   "exactly k neighbours, while the slides include every point tied at the k-distance, so differences can only come from ties.")
+
+        st.markdown("#### LOF vs the IQR (box-plot) rule")
+        iqr_set = set(ds.iqr_outliers(cs, "co2_per_capita")["country"])
+        lof_set = set(tab.loc[tab["flag"], "country"])
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("Both", len(lof_set & iqr_set))
+        k2.metric("LOF only", len(lof_set - iqr_set))
+        k3.metric("IQR only", len(iqr_set - lof_set))
+        k4.metric("Neither", len(tab) - len(lof_set | iqr_set))
+        cmp = tab.loc[tab["country"].isin(lof_set | iqr_set), ["country", "continent", "co2_per_capita", "gdp_per_capita", "lof"]].copy()
+        cmp.insert(1, "rank by LOF", cmp.index + 1)
+        cmp.insert(2, "flagged by", np.where(cmp["country"].isin(lof_set & iqr_set), "both",
+                                             np.where(cmp["country"].isin(lof_set), "LOF only", "IQR only")))
+        st.dataframe(cmp.round(3), hide_index=True, width="stretch")
+        st.caption("IQR rule: CO₂ per person outside Q1 − 1.5·IQR / Q3 + 1.5·IQR (course quartiles, one variable). High emitters in a "
+                   "dense cluster of rich, high-CO₂ countries get LOF ≈ 1 even when the IQR rule flags them.")
         note("Steps (Module 5): Manhattan distance → k-distance and k-neighbourhood → reachability distance "
              "max(k-dist(o), d(p,o)) → local reachability density lrd = |N_k| / Σ reach-dist → LOF = mean lrd of neighbours / own lrd. "
              "LOF ≈ 1 means as dense as the neighbours; well above 1 means isolated. Unlike the IQR rule it is two-dimensional and local, "
@@ -162,26 +188,41 @@ with t_ts:
         st.warning("Not enough data for this series.")
     else:
         comp = ts.holdout_comparison(s, train_end=train_end, k=kma, trend_start=tstart)
-        st.dataframe(comp["table"].round(3), width="stretch")
-        best = comp["table"]["MASE"].idxmin()
-        st.caption(f"Evaluated on {s.index.max() - train_end} hold-out years. MASE < 1 = better than the naïve 'same as last year' forecast "
-                   f"(scaled on the training period). Best here: **{best}**.")
+        mode = st.radio("Forecast mode", ["Fixed origin (true hold-out)", "One-step-ahead (course definition)"], horizontal=True)
+        fixed = mode.startswith("Fixed")
+        table, detail, fcs = ((comp["table_fixed"], comp["detail_fixed"], comp["forecasts_fixed"]) if fixed else
+                              (comp["table"], comp["detail"], {n: f[comp["years"] > train_end] for n, f in comp["forecasts"].items()}))
+        st.dataframe(table.round(3), width="stretch")
+        best = table["MASE"].idxmin()
+        st.caption(f"Evaluated on {s.index.max() - train_end} hold-out years. "
+                   + ("Every forecast is made once from data up to the last training year. " if fixed else
+                      "Each forecast uses actual values up to the previous year, including hold-out years already observed. ")
+                   + f"MASE < 1 = better than the naïve 'same as last year' forecast (scaled on the training period). Best here: **{best}**.")
+        if train_end < 2020 <= s.index.max():
+            drop = s.loc[2020] - s.loc[2019]
+            k1, k2, k3 = st.columns(3)
+            k1.metric("2019 → 2020 (COVID)", f"{drop:+,.0f} Mt", f"{drop / s.loc[2019] * 100:+.1f}%", delta_color="off")
+            se = ts.shock_errors(detail, 2020)
+            k2.metric("Best 2020 error", f"{se['APE shock year (%)'].min():.1f}%", se["APE shock year (%)"].idxmin(), delta_color="off")
+            k3.metric("Worst 2020 error", f"{se['APE shock year (%)'].max():.1f}%", se["APE shock year (%)"].idxmax(), delta_color="off")
+            st.dataframe(se.round(2), width="stretch")
         fig = go.Figure()
         fig.add_scatter(x=s.index, y=s.values, name="actual", line={"color": "#1d211e", "width": 2.5})
         cma = ts.centred_moving_average(s.to_numpy(), 5)
         fig.add_scatter(x=s.index, y=cma, name="trend: centred 5-yr MA", line={"color": "#9aa39c", "dash": "dot"})
         palette = ["#c0392b", LIME, "#3d7ea6", GREEN]
-        test = comp["years"] > train_end
-        for (name, f), col in zip(comp["forecasts"].items(), palette):
-            fig.add_scatter(x=comp["years"][test], y=f[test], name=name, mode="lines+markers", line={"color": col})
+        for (name, f), col in zip(fcs.items(), palette):
+            fig.add_scatter(x=detail["year"], y=f, name=name, mode="lines+markers", line={"color": col})
         fig.add_vline(train_end + 0.5, line_color="#9aa39c")
-        fig.update_layout(height=460, title=f"{who}: one-step-ahead forecasts vs actual (Mt CO₂)", yaxis_title="Mt CO₂")
+        fig.update_layout(height=460, title=f"{who}: {'fixed-origin' if fixed else 'one-step-ahead'} forecasts vs actual (Mt CO₂)",
+                          yaxis_title="Mt CO₂")
         st.plotly_chart(fig, width="stretch")
-        st.dataframe(comp["detail"].round(1), hide_index=True, width="stretch")
+        st.dataframe(detail.round(1), hide_index=True, width="stretch")
         tf = comp["trend_fit"]
         st.latex(rf"\text{{Least-squares trend ({tstart}–{train_end})}}:\ \hat y = {tf['slope']:.2f}\,t {tf['intercept']:+,.0f},\ R^2 = {tf['r2']:.3f}")
-        note("Average and moving-average forecasts follow the course definition: each forecast uses the actual values up to the "
-             "previous year. The trend line is extrapolated several years ahead, so it cannot react to shocks such as 2020. "
+        note("The course defines average and moving-average forecasts one step ahead, using actual values up to the previous year. "
+             "Over a multi-year hold-out that lets them see hold-out years, so the fixed-origin mode keeps them flat at their value "
+             "at the end of training. The trend line is extrapolated the same way in both modes, so it cannot react to shocks such as 2020. "
              "Annual data has no seasonality, so seasonal indices are not estimated (see the next tab).")
 
 with t_dec:

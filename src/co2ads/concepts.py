@@ -426,7 +426,17 @@ def build(res: dict) -> list[dict]:
         {"Top 5 by LOF": ", ".join(f"{c} ({v:.2f})" for c, v in zip(top_l["country"], top_l["lof"])),
          "LOF > 1.5": str(lof["n_flagged"]), "Also IQR outliers (of top 10)": ", ".join(lof["lof_top10_also_iqr"]) or "none"},
         "LOF finds countries that are unusual for their neighbourhood: very high emitters for their income (Qatar), and also low emitters for their income (Switzerland, Sweden, North Korea's low GDP with relatively high CO₂). The IQR rule only sees one variable and only high values.",
-        "Reproduces the 4-point slide example (LOF(d) = 2.0); matches sklearn LocalOutlierFactor(metric='manhattan').", "src/co2ads/lof.py::lof")
+        f"Reproduces the 4-point slide example (LOF(d) = 2.0). On these {lof['sklearn_check']['n']} countries it matches sklearn LocalOutlierFactor(metric='manhattan') to {lof['sklearn_check']['max_abs_diff']:.0e} ({lof['sklearn_check']['n_tied_neighbourhoods']} tied neighbourhoods, same top 10: {lof['sklearn_check']['same_top10']}).",
+        "src/co2ads/lof.py::lof, sklearn_check")
+    vi = lof["vs_iqr"].set_index("group")
+    add("M5 Anomaly Detection", "LOF vs the IQR (box-plot) rule",
+        f"LOF > {lof['threshold']} on both variables vs IQR fences on CO₂ per person alone ({G}, n = {lof['n']})",
+        r"\text{IQR outlier: } x<Q_1-1.5\,IQR \ \text{or}\ x>Q_3+1.5\,IQR",
+        {**{g: f"{r['n']}" + (f" ({r['countries']})" if r["countries"] else "") for g, r in vi.iterrows()},
+         "Flagged at every k (5, 10, 15, 20)": ", ".join(lof["flagged_at_every_k"])},
+        "The methods agree only on Qatar. The IQR-only countries (Gulf states, Australia, US) are high emitters but sit in a dense cluster of rich, high-CO₂ countries, so their local density is normal (LOF close to 1). LOF-only countries are unusual for their income, including low emitters the one-sided IQR rule cannot see.",
+        "IQR fences use the course quartile rule k(N+1)/4; the LOF threshold 1.5 is a convention, so k = 5–20 is reported as a sensitivity check.",
+        "src/co2ads/results.py::outliers_lof")
 
     # ------------------------------------------------------------------ Module 6
     comp = tsr["comparison"]
@@ -448,6 +458,16 @@ def build(res: dict) -> list[dict]:
         {"MASE < 1 means": "better than the naïve forecast", "Scaling series": "training period 1950–2019"},
         "MASE above 1 for every method shows that, over 2020–2024, simply carrying forward last year's value is hard to beat for annual emissions.",
         "Hand formulas; slide examples reproduced.", "src/co2ads/timeseries.py::evaluate, mase")
+    fx, cv = tsr["comparison_fixed"], tsr["covid"]
+    best_fx = fx["MASE"].idxmin()
+    add("M6 Time Series", "True hold-out (fixed origin) and the 2020 COVID shock",
+        "World CO₂; every forecast made from data up to 2019 only",
+        r"\hat y_{2019+h} = \bar y_{1950..2019}\ \text{(average)},\ \tfrac13(y_{2017}+y_{2018}+y_{2019})\ \text{(MA)},\ y_{2019}\ \text{(naïve)}",
+        {**{m: f"MAE {f(r['MAE'], 0)} Mt, MAPE {f(r['MAPE'], 2)}%, MASE {f(r['MASE'], 2)}" for m, r in fx.iterrows()},
+         "2020 drop": f"{f(cv['change'], 0)} Mt ({f(cv['change_pct'], 1)}%); back above 2019 in {cv['back_above_2019_in']}"},
+        f"One-step-ahead forecasts (course definition) see each hold-out year once it has happened; the fixed-origin test does not. Best by MASE: {best_fx}. No method anticipates the 2020 fall (2020 is one step ahead in both tests, so each method's 2020 error is the same in both), and the trend line, which assumes growth continues, is furthest off. Emissions rebounded to the 2019 level, so a flat forecast from 2019 did well afterwards.",
+        "Forecasts are unchanged when hold-out values are altered (test); trend errors identical in both tables.",
+        "src/co2ads/timeseries.py::fixed_origin_forecasts, shock_errors")
     return E
 
 

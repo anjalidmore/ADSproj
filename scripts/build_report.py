@@ -49,6 +49,10 @@ Y, G, B = q["latest_year"], 2022, 2005
 india = next(r for r in top["table"] if r["country"] == "India")
 us = next(r for r in top["table"] if r["country"] == "United States")
 best_ts = min(ts["comparison"], key=lambda r: r["MASE"])
+best_fx = min(ts["comparison_fixed"], key=lambda r: r["MASE"])
+cv, sk = ts["covid"], lof["sklearn_check"]
+vs_iqr = {r["group"]: r for r in lof["vs_iqr"]}
+fx_err = {r["method"]: r for r in cv["errors_fixed"]}
 n_concepts = len(R["concepts"])
 
 md = f"""---
@@ -373,6 +377,14 @@ LOF was implemented step by step as in Module 5: Manhattan distance → k-distan
 
 Unlike the one-dimensional IQR rule, which flagged only high emitters, LOF is local and two-dimensional. It flags Qatar (extreme on both axes), but also countries whose emissions are unusual *for their income*: rich low-carbon economies (Norway, Switzerland, Sweden, Singapore), very poor countries with almost no fossil-fuel use (Burundi, DR Congo), and North Korea (high CO₂ for its very low recorded GDP). Of LOF's top ten, only {', '.join(lof['lof_top10_also_iqr'])} were also IQR outliers. The two methods answer different questions.
 
+""" + table(lof["vs_iqr"], [("group", "Flagged by", None), ("n", "Countries", 0), ("countries", "Which", None)]) + f"""
+
+*Table 11: LOF (> {lof['threshold']}) vs the IQR rule on CO₂ per person.*
+
+The IQR-only countries are high emitters that sit inside a dense cluster of rich, high-CO₂ countries, so their local density matches their neighbours' (the United States ranks {next(r['lof_rank'] for r in lof['iqr_outlier_lof_scores'] if r['country'] == 'United States')} of {lof['n']} by LOF, score {f(next(r['lof'] for r in lof['iqr_outlier_lof_scores'] if r['country'] == 'United States'), 2)}). Because the 1.5 threshold is a convention, k was varied from 5 to 20: {', '.join(lof['flagged_at_every_k'])} stay flagged at every k.
+
+**Check against scikit-learn.** On the same {sk['n']} scaled points, `LocalOutlierFactor(n_neighbors={sk['k']}, metric='manhattan')` gives the same scores (largest difference {'below 10⁻⁶' if sk['max_abs_diff'] < 1e-6 else f(sk['max_abs_diff'], 6)}) and the same top ten. sklearn always uses exactly k neighbours, while the slides include every point tied at the k-distance. There are {sk['n_tied_neighbourhoods']} such ties here, so the two definitions coincide.
+
 # 9. Time-series analysis
 
 ![Forecasts on the hold-out period](figures/09_forecasts.png)
@@ -383,9 +395,17 @@ Unlike the one-dimensional IQR rule, which flagged only high emitters, LOF is lo
 
 """ + table(ts["comparison"], [("method", "Method", None), ("MAE", "MAE (Mt)", 0), ("RMSE", "RMSE (Mt)", 0), ("MAPE", "MAPE (%)", 2), ("MASE", "MASE", 2)]) + f"""
 
-*Table 11: Forecast accuracy on 2020–{Y}.*
+*Table 12: One-step-ahead forecast accuracy on 2020–{Y}.*
 
 The average method is useless for a trending series ({f(ts['comparison'][0]['MAPE'], 0)}% error), exactly as the slides warn: old values never leave the average. The 2000–2019 trend line (slope {f(ts['trend_fit_train']['slope'], 0)} Mt per year, R² = {f(ts['trend_fit_train']['r2'], 3)}) overshoots because growth slowed after about 2013 and 2020 fell sharply. The best method by MASE was **{best_ts['method']}**. All MASE values exceed 1, so over these five volatile years no method beat simply carrying last year's value forward. Fitting the trend on 2000–{Y} gives a slope of {f(ts['trend_full']['slope'], 0)} Mt per year. Mechanically extended to 2030 that implies about {f(ts['projection']['2030'] / 1000, 1)} Gt, but this is an extrapolation, not a prediction: it ignores policy and technology change.
+
+**True hold-out (fixed origin).** One-step-ahead forecasts see each hold-out year once it has happened (the 2021 moving average already contains the 2020 fall). To test forecasts made only from data up to 2019, each method was also run once from 2019: the average and moving average stay flat at their 2019 values, naïve repeats 2019, and the trend line is unchanged.
+
+""" + table(ts["comparison_fixed"], [("method", "Method", None), ("MAE", "MAE (Mt)", 0), ("RMSE", "RMSE (Mt)", 0), ("MAPE", "MAPE (%)", 2), ("MASE", "MASE", 2)]) + f"""
+
+*Table 13: Fixed-origin forecast accuracy (data up to 2019 only) on 2020–{Y}.*
+
+**The 2020 COVID drop.** World emissions fell {f(-cv['change'], 0)} Mt ({f(cv['change_pct'], 1)}%) from 2019 to 2020 and were back above the 2019 level by {cv['back_above_2019_in']}. 2020 is one step ahead in both tests, so each method's 2020 error is the same in both, and no method foresaw the fall: the 2020 error was {f(fx_err['Naïve (last value)']['APE shock year (%)'], 1)}% for naïve and {f(fx_err['Linear trend (2000–2019)']['APE shock year (%)'], 1)}% for the trend, against {f(fx_err['Naïve (last value)']['MAPE other years (%)'], 1)}% and {f(fx_err['Linear trend (2000–2019)']['MAPE other years (%)'], 1)}% on average in 2021–{Y}. Because emissions returned to their 2019 level, the flat naïve forecast from 2019 was the most accurate overall (**{best_fx['method']}**, MASE {f(best_fx['MASE'], 2)}), while the trend line, which assumed pre-2019 growth continued, overshot every year.
 
 # 10. Validation and academic integrity
 

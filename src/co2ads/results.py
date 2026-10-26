@@ -389,16 +389,33 @@ def regression(df: pd.DataFrame) -> dict:
 
 # ---------------------------------------------------------------- Module 5
 
-def outliers_lof(df: pd.DataFrame, k: int = 10) -> dict:
+def outliers_lof(df: pd.DataFrame, k: int = 10, threshold: float = 1.5) -> dict:
     cs = data.cross_section(df, G, ["co2_per_capita", "gdp_per_capita"])
     cs = cs.assign(log_co2_pc=np.log10(cs["co2_per_capita"]), log_gdp_pc=np.log10(cs["gdp_per_capita"]))
-    table = lofm.lof_table(cs, ["log_gdp_pc", "log_co2_pc"], k=k)
+    cols = ["log_gdp_pc", "log_co2_pc"]
+    table = lofm.lof_table(cs, cols, k=k)
     table = table.merge(cs[["country", "co2_per_capita", "gdp_per_capita", "continent"]], on="country")
     iqr_set = set(ds.iqr_outliers(cs, "co2_per_capita")["country"])
     top = table.head(10)
-    return {"k": k, "n": int(len(table)), "table": table, "threshold": 1.5,
-            "n_flagged": int((table["lof"] > 1.5).sum()),
-            "iqr_outliers": sorted(iqr_set), "lof_top10_also_iqr": sorted(set(top["country"]) & iqr_set)}
+    lof_set = set(table.loc[table["lof"] > threshold, "country"])
+    groups = {"both": lof_set & iqr_set, "LOF only": lof_set - iqr_set, "IQR only": iqr_set - lof_set}
+    vs_iqr = pd.DataFrame([{"group": g, "n": len(c), "countries": ", ".join(sorted(c))} for g, c in groups.items()]
+                          + [{"group": "neither", "n": len(table) - len(lof_set | iqr_set), "countries": ""}])
+    iqr_scores = table.loc[table["country"].isin(iqr_set), ["country", "co2_per_capita", "lof"]].copy()
+    iqr_scores["lof_rank"] = iqr_scores.index + 1
+    X = lofm.scaled(cs, cols)
+    sens = []
+    for kk in (5, 10, 15, 20):
+        t = lofm.lof_table(cs, cols, k=kk)
+        sens.append({"k": kk, "n_flagged": int((t["lof"] > threshold).sum()), "top5": ", ".join(t["country"].head(5))})
+    flagged_all_k = set.intersection(*[set(lofm.lof_table(cs, cols, k=kk).query("lof > @threshold")["country"])
+                                       for kk in (5, 10, 15, 20)])
+    return {"k": k, "n": int(len(table)), "table": table, "threshold": threshold,
+            "n_flagged": len(lof_set), "flagged": sorted(lof_set),
+            "iqr_outliers": sorted(iqr_set), "lof_top10_also_iqr": sorted(set(top["country"]) & iqr_set),
+            "vs_iqr": vs_iqr, "iqr_outlier_lof_scores": iqr_scores.reset_index(drop=True),
+            "sklearn_check": lofm.sklearn_check(X, k),
+            "k_sensitivity": pd.DataFrame(sens), "flagged_at_every_k": sorted(flagged_all_k)}
 
 
 # ---------------------------------------------------------------- Module 6
@@ -406,6 +423,7 @@ def outliers_lof(df: pd.DataFrame, k: int = 10) -> dict:
 def time_series(df: pd.DataFrame) -> dict:
     w = data.world_series(df, start=1950)
     comp = ts.holdout_comparison(w, train_end=2019, k=3, trend_start=2000)
+    drop = w.loc[2020] - w.loc[2019]
     full = w.loc[2000:]
     fit = rg.simple_regression(full.index.to_numpy(float), full.to_numpy())
     future = pd.Series({yr: fit["slope"] * yr + fit["intercept"] for yr in range(Y + 1, 2031)})
@@ -413,6 +431,12 @@ def time_series(df: pd.DataFrame) -> dict:
     return {
         "series": w, "cma5": pd.Series(ts.centred_moving_average(w.to_numpy(), 5), index=w.index),
         "comparison": comp["table"], "detail": comp["detail"], "trend_fit_train": comp["trend_fit"],
+        "comparison_fixed": comp["table_fixed"], "detail_fixed": comp["detail_fixed"],
+        "covid": {"co2_2019": float(w.loc[2019]), "co2_2020": float(w.loc[2020]), "change": float(drop),
+                  "change_pct": float(drop / w.loc[2019] * 100),
+                  "back_above_2019_in": int(w.loc[2021:][w.loc[2021:] > w.loc[2019]].index.min()),
+                  "errors_one_step": ts.shock_errors(comp["detail"], 2020).rename_axis("method"),
+                  "errors_fixed": ts.shock_errors(comp["detail_fixed"], 2020).rename_axis("method")},
         "trend_full": {"slope": fit["slope"], "intercept": fit["intercept"], "r2": fit["metrics"]["R2"]},
         "projection": future,
         "mean_annual_change_2000_latest": float(yearly.loc[2001:].mean()),
