@@ -133,13 +133,15 @@ def build(res: dict) -> list[dict]:
     add("M2 Descriptive Statistics", "Arithmetic mean (direct, short-cut, grouped step-deviation)",
         pc, r"\bar X = \frac{\Sigma X}{N};\quad \bar X = A + \frac{\Sigma f d'}{N}\times i",
         {"Mean (individual)": f(s["mean"], 3), "Grouped mean (direct)": f(grp["mean_direct"], 3),
-         "Grouped mean (step deviation)": f(grp["mean_step"], 3)},
-        "The grouped mean differs from the exact mean because it assumes values sit at class mid-points. With raw data available, the individual-series value is the one to report.",
+         "Grouped mean (step deviation)": f(grp["mean_step"], 3),
+         "Largest grouped-vs-raw gap": "{measure} {difference_pct:+.1f}%".format(**dist["grouped_vs_raw"].dropna().loc[lambda d: d["difference_pct"].abs().idxmax()])},
+        "The grouped mean differs from the exact mean because it assumes values sit at class mid-points. The lower quantiles suffer most, because nearly half the countries fall in the first class. With raw data available, the individual-series value is the one to report.",
         "Short-cut = direct and step-deviation = direct (tests/test_cross_checks.py).", "src/co2ads/descriptive.py::mean_direct, grouped_mean")
     add("M2 Descriptive Statistics", "Weighted mean & combined mean",
         f"co2_per_capita weighted by population ({Y})", r"\bar X_w = \frac{\Sigma W X}{\Sigma W};\quad \bar X_{12} = \frac{N_1\bar X_1 + N_2 \bar X_2}{N_1+N_2}",
         {"Simple mean (typical country)": f(s["mean"], 3), "Population-weighted mean (typical person)": f(dist["population_weighted_mean"], 3),
-         "World per capita (incl. aviation & shipping)": f(dist["world_per_capita"], 3),
+         "Countries + international aviation & shipping": f(dist["mean_comparison"]["with_international"], 3),
+         "World per capita (World row)": f(dist["world_per_capita"], 3),
          "Combined mean of 6 continent means": f(dist["combined_mean_check"], 3)},
         "The simple mean treats Tuvalu and India equally; the weighted mean gives the average for a person. The weighted value is a little below the World figure because international aviation and shipping belong to no country.",
         "Combined mean of continent groups reproduces the overall mean exactly.", "src/co2ads/descriptive.py::weighted_mean, combined_mean")

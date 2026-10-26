@@ -39,6 +39,9 @@ dist, rel, inf, reg, lof, ts = R["distribution"], R["relationships"], R["inferen
 cl, ux, cfm = R["classification"], R["univariate_extras"], R["correlation_forms"]
 dts, mo, cm = ux["discrete_summary"], ux["moments"], ux["correction"]
 s, grp, box = dist["summary"], dist["grouped"], dist["box"]
+mc = dist["mean_comparison"]
+gvr_table = table(dist["grouped_vs_raw"], [("measure", "Measure", None), ("raw", "Raw data", 3), ("grouped", "Grouped data", 3),
+                                           ("difference", "Grouped − raw", 3), ("difference_pct", "Difference %", 1)])
 an, tw, pt, it, z, ci = inf["anova"], inf["two_way"], inf["paired"], inf["independent"], inf["z_test"], inf["ci_mean"]
 sm, mm = reg["simple"], reg["multiple"]
 c1, c2 = mm["coefficients"]
@@ -189,9 +192,13 @@ All measures below follow the course formula sheet and use the {s['n']} countrie
 
 The distribution is strongly **positively skewed**: Mode ({f(s['grouped_mode'])}) < Median ({f(s['median'])}) < Mean ({f(s['mean'])}), the order the course gives for right skew. The coefficient of variation exceeds 100%, and β₂ = {f(s['beta2'], 1)} (well above 3) shows a leptokurtic shape: a sharp peak of low emitters with a heavy upper tail. Bowley's coefficient ({f(s['bowley_sk'], 3)}) is much smaller than Pearson's ({f(s['pearson_sk_median'], 3)}) because it only uses the middle 50% and ignores the tail. Note: the course formula sheet's kurtosis table pairs the shape descriptions with the wrong β₂ values; the standard meaning (β₂ > 3 = more peaked, heavier tails) is used here.
 
-**Grouped-data estimates.** With {s['classes']} classes of width {f(s['class_width'], 0)} t (≈ √n rule), the grouped mean is {f(grp['mean_direct'], 3)} by both the direct and step-deviation methods (assumed mean A = {f(grp['assumed_mean'], 1)}), the grouped median is {f(grp['median'], 3)} and the grouped σ is {f(grp['std'], 3)}. They differ from the exact values because grouping assumes values sit at class mid-points. This is the cost of grouping when the raw data are available.
+**Grouped-data estimates.** With {s['classes']} classes of width {f(s['class_width'], 0)} t (≈ √n rule), the grouped mean is {f(grp['mean_direct'], 3)} by both the direct and step-deviation methods (assumed mean A = {f(grp['assumed_mean'], 1)}), the grouped median is {f(grp['median'], 3)} and the grouped σ is {f(grp['std'], 3)}. They differ from the exact values because grouping assumes values sit at class mid-points (mean, σ) or spread evenly through each class (median, quantiles):
 
-**Weighted vs simple mean.** The simple mean ({f(s['mean'], 3)} t) describes the typical *country*. The population-weighted mean ΣWX/ΣW ({f(dist['population_weighted_mean'], 3)} t) describes the typical *person*. The World figure ({f(dist['world_per_capita'], 3)} t) is slightly higher again, because international aviation and shipping belong to no country. The combined mean of the six continent means, weighted by group size, reproduces the overall mean exactly ({f(dist['combined_mean_check'], 3)}).
+{gvr_table}
+
+The lower quantiles are worst, because {dist['freq_table'][0]['f']} of {s['n']} countries fall in the first class and are spread unevenly inside it. This is the cost of grouping when the raw data are available.
+
+**Weighted vs simple mean.** The simple mean ({f(s['mean'], 3)} t) describes the typical *country*. The population-weighted mean ΣWX/ΣW ({f(dist['population_weighted_mean'], 3)} t) describes the typical *person*. The World figure ({f(dist['world_per_capita'], 3)} t) is slightly higher again. The countries emit {f(mc['country_co2_mt'], 0)} Mt for {f(mc['country_population'] / 1e9, 3)} bn people; adding international aviation and shipping ({f(mc['international_mt'], 0)} Mt), which belong to no country, gives {f(mc['with_international'], 3)} t, and the World row's slightly larger population ({f(mc['world_population'] / 1e9, 3)} bn) brings it to {f(mc['world_per_capita'], 3)} t. The combined mean of the six continent means, weighted by group size, reproduces the overall mean exactly ({f(dist['combined_mean_check'], 3)}).
 
 ## 4.5 Outliers (RQ6, part 1)
 

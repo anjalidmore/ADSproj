@@ -1028,8 +1028,130 @@
    "q3": 6.057692,
    "std": 5.336189
   },
+  "grouped_vs_raw": [
+   {
+    "measure": "Mean",
+    "raw formula": "ΣX / N",
+    "grouped formula": "Σfm / N",
+    "raw": 4.632456,
+    "grouped": 4.906542,
+    "difference": 0.274086,
+    "difference_pct": 5.916649
+   },
+   {
+    "measure": "Median",
+    "raw formula": "(N+1)/2 th item",
+    "grouped formula": "L + (N/2 − cf)/f × i",
+    "raw": 3.209851,
+    "grouped": 3.160714,
+    "difference": -0.049137,
+    "difference_pct": -1.530822
+   },
+   {
+    "measure": "Mode",
+    "raw formula": "—",
+    "grouped formula": "L + Δ1/(Δ1+Δ2) × i",
+    "raw": null,
+    "grouped": 2.052632,
+    "difference": null,
+    "difference_pct": null
+   },
+   {
+    "measure": "Q1",
+    "raw formula": "(N+1)/4 th item",
+    "grouped formula": "L + (N/4 − cf)/f × i",
+    "raw": 0.985401,
+    "grouped": 1.543269,
+    "difference": 0.557868,
+    "difference_pct": 56.613348
+   },
+   {
+    "measure": "Q3",
+    "raw formula": "3(N+1)/4 th item",
+    "grouped formula": "L + (3N/4 − cf)/f × i",
+    "raw": 6.019201,
+    "grouped": 6.057692,
+    "difference": 0.038491,
+    "difference_pct": 0.639472
+   },
+   {
+    "measure": "IQR",
+    "raw formula": "Q3 − Q1",
+    "grouped formula": "Q3 − Q1",
+    "raw": 5.0338,
+    "grouped": 4.514423,
+    "difference": -0.519377,
+    "difference_pct": -10.317796
+   },
+   {
+    "measure": "D1",
+    "raw formula": "(N+1)/10 th item",
+    "grouped formula": "L + (N/10 − cf)/f × i",
+    "raw": 0.274611,
+    "grouped": 0.617308,
+    "difference": 0.342697,
+    "difference_pct": 124.79373
+   },
+   {
+    "measure": "D9",
+    "raw formula": "9(N+1)/10 th item",
+    "grouped formula": "L + (9N/10 − cf)/f × i",
+    "raw": 11.182856,
+    "grouped": 11.2,
+    "difference": 0.017144,
+    "difference_pct": 0.153306
+   },
+   {
+    "measure": "Standard deviation σ",
+    "raw formula": "√[Σ(X − X̄)²/N]",
+    "grouped formula": "√[Σfd'²/N − (Σfd'/N)²] × i",
+    "raw": 5.500591,
+    "grouped": 5.336189,
+    "difference": -0.164402,
+    "difference_pct": -2.988815
+   }
+  ],
   "population_weighted_mean": 4.58747,
   "world_per_capita": 4.729075,
+  "mean_comparison": {
+   "year": 2024,
+   "n": 214,
+   "simple_mean": 4.632456,
+   "weighted_mean": 4.58747,
+   "with_international": 4.733714,
+   "world_per_capita": 4.729075,
+   "country_co2_mt": 37406.115064,
+   "country_population": 8153974342.0,
+   "international_mt": 1192.4638,
+   "world_co2_mt": 38598.58,
+   "world_population": 8161972574.0,
+   "steps": [
+    {
+     "step": "Simple mean of countries",
+     "formula": "ΣX / N",
+     "inputs": "214 countries, each counted once",
+     "t_per_person": 4.632456
+    },
+    {
+     "step": "Population-weighted mean",
+     "formula": "ΣWX / ΣW = Σ CO₂ / Σ population",
+     "inputs": "37,406 Mt / 8.154 bn people",
+     "t_per_person": 4.58747
+    },
+    {
+     "step": "+ international aviation & shipping",
+     "formula": "(Σ CO₂ + international) / Σ population",
+     "inputs": "(37,406 + 1,192) Mt / 8.154 bn",
+     "t_per_person": 4.733714
+    },
+    {
+     "step": "World row",
+     "formula": "World CO₂ / World population",
+     "inputs": "38,599 Mt / 8.162 bn",
+     "t_per_person": 4.729075
+    }
+   ]
+  },
   "by_continent": [
    {
     "continent": "Africa",
@@ -7581,9 +7703,10 @@
    "output": {
     "Mean (individual)": "4.632",
     "Grouped mean (direct)": "4.907",
-    "Grouped mean (step deviation)": "4.907"
+    "Grouped mean (step deviation)": "4.907",
+    "Largest grouped-vs-raw gap": "D1 +124.8%"
    },
-   "interpretation": "The grouped mean differs from the exact mean because it assumes values sit at class mid-points. With raw data available, the individual-series value is the one to report.",
+   "interpretation": "The grouped mean differs from the exact mean because it assumes values sit at class mid-points. The lower quantiles suffer most, because nearly half the countries fall in the first class. With raw data available, the individual-series value is the one to report.",
    "validation": "Short-cut = direct and step-deviation = direct (tests/test_cross_checks.py).",
    "code": "src/co2ads/descriptive.py::mean_direct, grouped_mean"
   },
@@ -7596,7 +7719,8 @@
    "output": {
     "Simple mean (typical country)": "4.632",
     "Population-weighted mean (typical person)": "4.587",
-    "World per capita (incl. aviation & shipping)": "4.729",
+    "Countries + international aviation & shipping": "4.734",
+    "World per capita (World row)": "4.729",
     "Combined mean of 6 continent means": "4.632"
    },
    "interpretation": "The simple mean treats Tuvalu and India equally; the weighted mean gives the average for a person. The weighted value is a little below the World figure because international aviation and shipping belong to no country.",

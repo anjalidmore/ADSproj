@@ -167,7 +167,8 @@ Generated from `src/co2ads/concepts.py` by `scripts/export_results.py`. All numb
     - Mean (individual): 4.632
     - Grouped mean (direct): 4.907
     - Grouped mean (step deviation): 4.907
-- **Interpretation:** The grouped mean differs from the exact mean because it assumes values sit at class mid-points. With raw data available, the individual-series value is the one to report.
+    - Largest grouped-vs-raw gap: D1 +124.8%
+- **Interpretation:** The grouped mean differs from the exact mean because it assumes values sit at class mid-points. The lower quantiles suffer most, because nearly half the countries fall in the first class. With raw data available, the individual-series value is the one to report.
 - **Validation:** Short-cut = direct and step-deviation = direct (tests/test_cross_checks.py).
 - **Code:** `src/co2ads/descriptive.py::mean_direct, grouped_mean`
 
@@ -178,7 +179,8 @@ Generated from `src/co2ads/concepts.py` by `scripts/export_results.py`. All numb
 - **Computed output:**
     - Simple mean (typical country): 4.632
     - Population-weighted mean (typical person): 4.587
-    - World per capita (incl. aviation & shipping): 4.729
+    - Countries + international aviation & shipping: 4.734
+    - World per capita (World row): 4.729
     - Combined mean of 6 continent means: 4.632
 - **Interpretation:** The simple mean treats Tuvalu and India equally; the weighted mean gives the average for a person. The weighted value is a little below the World figure because international aviation and shipping belong to no country.
 - **Validation:** Combined mean of continent groups reproduces the overall mean exactly.

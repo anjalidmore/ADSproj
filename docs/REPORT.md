@@ -150,9 +150,23 @@ All measures below follow the course formula sheet and use the 214 countries wit
 
 The distribution is strongly **positively skewed**: Mode (2.05) < Median (3.21) < Mean (4.63), the order the course gives for right skew. The coefficient of variation exceeds 100%, and β₂ = 14.1 (well above 3) shows a leptokurtic shape: a sharp peak of low emitters with a heavy upper tail. Bowley's coefficient (0.116) is much smaller than Pearson's (0.776) because it only uses the middle 50% and ignores the tail. Note: the course formula sheet's kurtosis table pairs the shape descriptions with the wrong β₂ values; the standard meaning (β₂ > 3 = more peaked, heavier tails) is used here.
 
-**Grouped-data estimates.** With 14 classes of width 3 t (≈ √n rule), the grouped mean is 4.907 by both the direct and step-deviation methods (assumed mean A = 1.5), the grouped median is 3.161 and the grouped σ is 5.336. They differ from the exact values because grouping assumes values sit at class mid-points. This is the cost of grouping when the raw data are available.
+**Grouped-data estimates.** With 14 classes of width 3 t (≈ √n rule), the grouped mean is 4.907 by both the direct and step-deviation methods (assumed mean A = 1.5), the grouped median is 3.161 and the grouped σ is 5.336. They differ from the exact values because grouping assumes values sit at class mid-points (mean, σ) or spread evenly through each class (median, quantiles):
 
-**Weighted vs simple mean.** The simple mean (4.632 t) describes the typical *country*. The population-weighted mean ΣWX/ΣW (4.587 t) describes the typical *person*. The World figure (4.729 t) is slightly higher again, because international aviation and shipping belong to no country. The combined mean of the six continent means, weighted by group size, reproduces the overall mean exactly (4.632).
+| Measure | Raw data | Grouped data | Grouped − raw | Difference % |
+|---|---:|---:|---:|---:|
+| Mean | 4.632 | 4.907 | 0.274 | 5.9 |
+| Median | 3.210 | 3.161 | -0.049 | -1.5 |
+| Mode | — | 2.053 | — | — |
+| Q1 | 0.985 | 1.543 | 0.558 | 56.6 |
+| Q3 | 6.019 | 6.058 | 0.038 | 0.6 |
+| IQR | 5.034 | 4.514 | -0.519 | -10.3 |
+| D1 | 0.275 | 0.617 | 0.343 | 124.8 |
+| D9 | 11.183 | 11.200 | 0.017 | 0.2 |
+| Standard deviation σ | 5.501 | 5.336 | -0.164 | -3.0 |
+
+The lower quantiles are worst, because 104 of 214 countries fall in the first class and are spread unevenly inside it. This is the cost of grouping when the raw data are available.
+
+**Weighted vs simple mean.** The simple mean (4.632 t) describes the typical *country*. The population-weighted mean ΣWX/ΣW (4.587 t) describes the typical *person*. The World figure (4.729 t) is slightly higher again. The countries emit 37,406 Mt for 8.154 bn people; adding international aviation and shipping (1,192 Mt), which belong to no country, gives 4.734 t, and the World row's slightly larger population (8.162 bn) brings it to 4.729 t. The combined mean of the six continent means, weighted by group size, reproduces the overall mean exactly (4.632).
 
 ## 4.5 Outliers (RQ6, part 1)
 

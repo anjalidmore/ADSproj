@@ -246,6 +246,33 @@ def grouped_mode(t: pd.DataFrame) -> dict:
             "f1": int(f[m]), "f0": int(f0), "f2": int(f2), "delta1": int(d1), "delta2": int(d2)}
 
 
+def grouped_vs_raw(x, t: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Each measure from the individual series (k(N+1) rule, σ ÷ N) next to its grouped-data formula.
+
+    Continuous raw values never repeat, so the raw mode is left empty.
+    """
+    a = _arr(x)
+    if t is None:
+        t = frequency_table(a)
+    q1, med, q3 = quartiles(a)
+    gq1, gq3 = grouped_quantile(t, 1, 4), grouped_quantile(t, 3, 4)
+    rows = [
+        ("Mean", "ΣX / N", "Σfm / N", mean_direct(a), grouped_mean(t)["direct"]),
+        ("Median", "(N+1)/2 th item", "L + (N/2 − cf)/f × i", med, grouped_median(t)),
+        ("Mode", "—", "L + Δ1/(Δ1+Δ2) × i", np.nan, grouped_mode(t)["mode"]),
+        ("Q1", "(N+1)/4 th item", "L + (N/4 − cf)/f × i", q1, gq1),
+        ("Q3", "3(N+1)/4 th item", "L + (3N/4 − cf)/f × i", q3, gq3),
+        ("IQR", "Q3 − Q1", "Q3 − Q1", q3 - q1, gq3 - gq1),
+        ("D1", "(N+1)/10 th item", "L + (N/10 − cf)/f × i", quantile(a, 1, 10), grouped_quantile(t, 1, 10)),
+        ("D9", "9(N+1)/10 th item", "L + (9N/10 − cf)/f × i", quantile(a, 9, 10), grouped_quantile(t, 9, 10)),
+        ("Standard deviation σ", "√[Σ(X − X̄)²/N]", "√[Σfd'²/N − (Σfd'/N)²] × i", std(a), grouped_std(t)),
+    ]
+    out = pd.DataFrame(rows, columns=["measure", "raw formula", "grouped formula", "raw", "grouped"])
+    out["difference"] = out["grouped"] - out["raw"]
+    out["difference_pct"] = out["difference"] / out["raw"] * 100
+    return out
+
+
 def class_table(lower, upper, f) -> pd.DataFrame:
     """Frequency table from given class limits (exclusive form) and frequencies."""
     lower, upper, f = (np.asarray(v, float) for v in (lower, upper, f))

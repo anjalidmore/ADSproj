@@ -118,3 +118,38 @@ def test_partial_and_multiple_correlation():
     assert cr.partial_correlation(y, x1, x2) == pytest.approx(np.corrcoef(ry, r1)[0, 1])
     R2 = sm.OLS(y, sm.add_constant(np.column_stack([x1, x2]))).fit().rsquared
     assert cr.multiple_correlation(y, x1, x2) == pytest.approx(np.sqrt(R2))
+
+
+def test_grouped_vs_raw_matches_individual_formulas():
+    x = np.random.default_rng(7).lognormal(1, 0.9, 213)
+    t = ds.frequency_table(x)
+    g = ds.grouped_vs_raw(x, t).set_index("measure")
+    s = ds.summary(x)
+    assert g.loc["Mean", "raw"] == pytest.approx(s["mean"]) and g.loc["Mean", "grouped"] == pytest.approx(ds.grouped_mean(t)["direct"])
+    assert g.loc["Median", "raw"] == pytest.approx(s["median"]) and g.loc["Median", "grouped"] == pytest.approx(ds.grouped_median(t))
+    assert g.loc["Q3", "grouped"] == pytest.approx(ds.grouped_quantile(t, 3, 4))
+    assert g.loc["Standard deviation σ", "raw"] == pytest.approx(s["std"])
+    assert g.loc["Standard deviation σ", "grouped"] == pytest.approx(ds.grouped_std(t))
+    assert np.isnan(g.loc["Mode", "raw"]) and g.loc["Mode", "grouped"] == pytest.approx(s["grouped_mode"])
+
+
+def test_grouped_mean_exact_when_values_sit_at_midpoints():
+    x = np.repeat([0.5, 1.5, 2.5, 3.5], [3, 9, 5, 2])
+    g = ds.grouped_vs_raw(x, ds.frequency_table(x, width=1, start=0)).set_index("measure")
+    assert g.loc["Mean", "difference"] == pytest.approx(0)
+    assert g.loc["Standard deviation σ", "difference"] == pytest.approx(0)
+
+
+def test_per_capita_means_reconcile_with_world_row():
+    from co2ads import data
+    from co2ads import results as R
+    df = data.load_clean()
+    m = R.per_capita_means(df)
+    cs = data.cross_section(df, m["year"], ["co2", "co2_per_capita"])
+    # ΣWX/ΣW with W = population is total CO2 over total population (per-person values are rounded in the file)
+    assert m["weighted_mean"] == pytest.approx(cs["co2"].sum() * 1e6 / cs["population"].sum(), rel=1e-4)
+    world = df[(df["country"] == "World") & (df["year"] == m["year"])].iloc[0]
+    assert m["world_per_capita"] == pytest.approx(world["co2_per_capita"], abs=1e-4)
+    assert m["steps"]["t_per_person"].tolist() == pytest.approx(
+        [m["simple_mean"], m["weighted_mean"], m["with_international"], m["world_per_capita"]])
+    assert m["international_mt"] > 0 and abs(m["with_international"] - m["world_per_capita"]) < 0.01

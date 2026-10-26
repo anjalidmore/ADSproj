@@ -83,7 +83,24 @@ with tab_sum:
     csv_button(table, f"descriptive_{var}_{year}.csv")
     note(f"<b>Interpretation:</b> the distribution is <b>{ds.skew_direction(s['pearson_sk_median'])}</b> "
          f"(mean {fmt(s['mean'])} vs median {fmt(s['median'])}); kurtosis: {s['kurtosis_label']}.")
-    if not use_log and var.endswith("per_capita") and "population" in cs:
+    if var == "co2_per_capita" and not use_log and not conts:
+        mc = R.per_capita_means(df, year)
+        st.markdown("#### Which mean? Average country, average person, World figure")
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Simple mean ΣX/N (average country)", fmt(mc["simple_mean"], 3))
+        m2.metric("Population-weighted ΣWX/ΣW (average person)", fmt(mc["weighted_mean"], 3),
+                  f"{mc['weighted_mean'] - mc['simple_mean']:+.3f} vs simple", delta_color="off")
+        m3.metric("World row (OWID)", fmt(mc["world_per_capita"], 3),
+                  f"{mc['world_per_capita'] - mc['weighted_mean']:+.3f} vs weighted", delta_color="off")
+        st.dataframe(mc["steps"].assign(t_per_person=mc["steps"]["t_per_person"].round(3)),
+                     width="stretch", hide_index=True)
+        note(f"The simple mean gives Tuvalu the same vote as India. Weighting by population turns it into "
+             f"Σ CO₂ / Σ population, the average for a <b>person</b>, pulled towards the levels of the most populous countries "
+             f"(China, India, the United States…) and away from small high emitters such as Qatar. The World figure adds "
+             f"international aviation and shipping ({mc['international_mt']:,.0f} Mt), which belong to no country. The last small "
+             f"step is the population: the World row counts {(mc['world_population'] - mc['country_population']) / 1e6:,.1f} M "
+             f"more people than the countries with a per-person value.")
+    elif not use_log and var.endswith("per_capita") and "population" in cs:
         wm = ds.weighted_mean(cs[var], cs["population"])
         st.markdown(f"**Weighted mean** (weights = population, ΣWX/ΣW): **{fmt(wm, 3)}** vs simple mean {fmt(s['mean'], 3)}. "
                     "The simple mean describes the typical *country*; the weighted mean describes the typical *person*.")
@@ -109,7 +126,17 @@ with tab_freq:
     fig.add_vline(s["median"], line_dash="dot", line_color="#1d211e", annotation_text="median")
     fig.update_layout(height=420, title=f"Histogram & frequency polygon: {name}, {year}", xaxis_title=name, yaxis_title="number of countries")
     st.plotly_chart(fig, width="stretch")
-    st.caption("Grouped values differ slightly from the exact (individual-series) values because grouping assumes every value sits at its class mid-point.")
+    st.markdown(f"#### Grouped-data results vs raw results ({len(ft)} classes of width {w:g})")
+    gvr = ds.grouped_vs_raw(x, ft)
+    st.dataframe(gvr.round(4), width="stretch", hide_index=True)
+    csv_button(gvr, f"grouped_vs_raw_{var}_{year}.csv")
+    worst = gvr.dropna().loc[lambda d: d["difference_pct"].abs().idxmax()]
+    note("Grouping throws away each value's exact position: every country is treated as if it sat at its class mid-point "
+         "(for the mean and σ) or as if values were spread evenly through the class (for the median and quantiles). "
+         f"The largest relative error here is <b>{worst['measure']}</b> ({worst['difference_pct']:+.1f}%). Errors are largest "
+         "where a wide class holds many unevenly spread values, which in a right-skewed variable is the first class. "
+         "Narrow the class width above and the grouped results move towards the raw ones. "
+         "When the raw data are available, report the raw values; the grouped formulas are for published tables.")
 
 with tab_box:
     b = ds.box_plot(x)

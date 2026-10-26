@@ -56,18 +56,38 @@ def all_metrics(y, yhat) -> dict:
 # ---------------------------------------------------------------- simple linear regression
 
 def simple_regression(x, y, alpha: float = 0.05) -> dict:
-    """y′ = a·x + b with a = (nΣxy − ΣxΣy)/(nΣx² − (Σx)²), b = (Σy − aΣx)/n."""
+    """y′ = a·x + b with a = (nΣxy − ΣxΣy)/(nΣx² − (Σx)²), b = (Σy − aΣx)/n.
+
+    Also returns the slide 18–24 fit statistics with k = 1, so the simple and the two-predictor
+    model can be compared metric for metric.
+    """
     x, y = _clean(x, y)
-    n = x.size
+    n, k = x.size, 1
     a = (n * (x * y).sum() - x.sum() * y.sum()) / (n * (x ** 2).sum() - x.sum() ** 2)
     b = (y.sum() - a * x.sum()) / n
     yhat = a * x + b
-    rss = ((y - yhat) ** 2).sum()
-    se_a = math.sqrt(rss / (n - 2) / ((x - x.mean()) ** 2).sum())
+    sxx = (x ** 2).sum() - x.sum() ** 2 / n
+    sxy = (x * y).sum() - x.sum() * y.sum() / n
+    syy = (y ** 2).sum() - y.sum() ** 2 / n
+    ss_reg = a * sxy                                     # R²Σy² = aΣxy
+    ss_err = syy - ss_reg
+    df_err = n - k - 1
+    r2_value = ss_reg / syy
+    f = (df_err * r2_value) / (k * (1 - r2_value))
+    f_crit = stats.f.ppf(1 - alpha, k, df_err)
+    se_a = math.sqrt(ss_err / df_err / sxx)
     t = a / se_a
-    crit = stats.t.ppf(1 - alpha / 2, n - 2)
+    crit = stats.t.ppf(1 - alpha / 2, df_err)
     return {"n": int(n), "slope": float(a), "intercept": float(b), "se_slope": float(se_a), "t_slope": float(t),
-            "t_critical": float(crit), "p_slope": float(2 * stats.t.sf(abs(t), n - 2)),
+            "t_critical": float(crit), "p_slope": float(2 * stats.t.sf(abs(t), df_err)),
+            "slope_significant": bool(abs(t) > crit),
+            "sums": {"Σx²": sxx, "Σxy": sxy, "Σy²": syy}, "r": float(sxy / math.sqrt(sxx * syy)),
+            "r2": float(r2_value), "adj_r2": float(adjusted_r2(r2_value, n, k)),
+            "anova": {"ss_regression": float(ss_reg), "ss_error": float(ss_err), "ss_total": float(syy),
+                      "df_regression": k, "df_error": df_err, "ms_regression": float(ss_reg / k),
+                      "ms_error": float(ss_err / df_err)},
+            "F": float(f), "F_critical": float(f_crit), "p_F": float(stats.f.sf(f, k, df_err)),
+            "F_decision": "Reject H0 (model significant)" if f >= f_crit else "Fail to reject H0",
             "metrics": all_metrics(y, yhat), "fitted": yhat, "residuals": y - yhat}
 
 
@@ -116,9 +136,63 @@ def multiple_regression_2(x1, x2, y, alpha: float = 0.05) -> dict:
                   "ms_error": float(mse_err)},
         "F": float(f), "F_critical": float(f_crit), "p_F": float(stats.f.sf(f, k, df_err)),
         "F_decision": "Reject H0 (model significant)" if f >= f_crit else "Fail to reject H0",
-        "r12": float(r12), "t_critical": float(t_crit), "coefficients": coefs,
+        "R": float(math.sqrt(r2_value)), "r12": float(r12), "collinearity": collinearity(r12),
+        "t_critical": float(t_crit), "coefficients": coefs,
         "metrics": all_metrics(y, yhat), "fitted": yhat, "residuals": y - yhat,
     }
+
+
+def collinearity(r12: float, threshold: float = 0.8) -> dict:
+    """Overlap between X1 and X2, read off the (1 − r12²) term in the slide 39 SE(b_i) formula.
+
+    Tolerance = 1 − r12² is the share of a predictor NOT explained by the other one;
+    VIF = 1/tolerance is the factor by which that term inflates Var(b_i) (√VIF inflates SE).
+    With two predictors both predictors share the same VIF. Rules of thumb: |r12| ≥ 0.8 flags
+    multicollinearity; VIF ≥ 5 is high, VIF ≥ 10 severe.
+    """
+    tol = 1 - r12 ** 2
+    vif = 1 / tol
+    level = "severe" if vif >= 10 else "high" if vif >= 5 or abs(r12) >= threshold else \
+        "moderate" if abs(r12) >= 0.5 else "low"
+    return {"r12": float(r12), "r12_squared": float(r12 ** 2), "tolerance": float(tol), "vif": float(vif),
+            "se_inflation": float(math.sqrt(vif)), "threshold": threshold, "level": level,
+            "flagged": bool(abs(r12) >= threshold or vif >= 5)}
+
+
+def compare_models(simple: dict, multi: dict) -> dict:
+    """Simple (X1 only) vs two-predictor model: every slide metric side by side, plus how much the
+    X1 coefficient moves once X2 is added — a sign flip or a lost t-test is the symptom of overlap."""
+    rows = {
+        "n": (simple["n"], multi["n"]),
+        "R (multiple correlation)": (abs(simple["r"]), multi["R"]),
+        "R²": (simple["r2"], multi["r2"]),
+        "adjusted R²": (simple["adj_r2"], multi["adj_r2"]),
+        "F": (simple["F"], multi["F"]),
+        "F critical (α = 0.05)": (simple["F_critical"], multi["F_critical"]),
+        "df (regression, error)": (f"1, {simple['anova']['df_error']}", f"2, {multi['anova']['df_error']}"),
+        "SS regression": (simple["anova"]["ss_regression"], multi["anova"]["ss_regression"]),
+        "SS error": (simple["anova"]["ss_error"], multi["anova"]["ss_error"]),
+        "MS error": (simple["anova"]["ms_error"], multi["anova"]["ms_error"]),
+        **{m: (simple["metrics"][m], multi["metrics"][m]) for m in ("MAE", "MSE", "RMSE", "MAPE")},
+    }
+    b1_alone, b1_joint = simple["slope"], multi["b1"]
+    c1 = multi["coefficients"][0]
+    return {
+        "table": [{"metric": k, "simple": v[0], "multiple": v[1]} for k, v in rows.items()],
+        "delta_r2": multi["r2"] - simple["r2"], "delta_adj_r2": multi["adj_r2"] - simple["adj_r2"],
+        "b1_simple": b1_alone, "b1_multiple": b1_joint,
+        "b1_change_pct": (b1_joint - b1_alone) / abs(b1_alone) * 100,
+        "b1_sign_flip": bool(np.sign(b1_alone) != np.sign(b1_joint)),
+        "se_b1_simple": simple["se_slope"], "se_b1_multiple": c1["se"],
+        "b1_lost_significance": bool(simple["slope_significant"] and not c1["significant"]),
+    }
+
+
+def predict(model: dict, x1: float, x2: float | None = None) -> float:
+    """Slide 32 'estimate for unknown values': plug new X values into the fitted equation."""
+    if x2 is None:
+        return float(model["slope"] * x1 + model["intercept"])
+    return float(model["b0"] + model["b1"] * x1 + model["b2"] * x2)
 
 
 # ---------------------------------------------------------------- Module 1: model evaluation

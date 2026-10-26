@@ -7,6 +7,8 @@ Each function takes the clean DataFrame and returns a dict (DataFrames allowed).
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -82,6 +84,40 @@ def changes(df: pd.DataFrame, min_base_mt: float = 10.0) -> dict:
 
 # ---------------------------------------------------------------- Module 2: distribution of per-capita CO2
 
+def per_capita_means(df: pd.DataFrame, year: int = Y) -> dict:
+    """Simple mean (one vote per country) → population-weighted mean (one vote per person) → World figure.
+
+    ΣWX/ΣW with W = population equals Σ country CO2 / Σ country population. The World row adds
+    international aviation and shipping (no country owns them) and divides by the World population,
+    which also counts territories without a per-person value.
+    """
+    cs = data.cross_section(df, year, ["co2_per_capita"])
+    x, w = cs["co2_per_capita"], cs["population"]
+    country_mt = float((x * w).sum() / 1e6)
+    country_pop = float(w.sum())
+    intl_mt = float(df.loc[(df["entity_type"] == "international") & (df["year"] == year), "co2"].sum())
+    world = df.loc[(df["country"] == "World") & (df["year"] == year)].iloc[0]
+    simple, weighted = ds.mean_direct(x), ds.weighted_mean(x, w)
+    with_intl = (country_mt + intl_mt) * 1e6 / country_pop
+    world_pc = float(world["co2"] * 1e6 / world["population"])
+    steps = pd.DataFrame([
+        ("Simple mean of countries", "ΣX / N", f"{len(cs)} countries, each counted once", simple),
+        ("Population-weighted mean", "ΣWX / ΣW = Σ CO₂ / Σ population",
+         f"{country_mt:,.0f} Mt / {country_pop / 1e9:.3f} bn people", weighted),
+        ("+ international aviation & shipping", "(Σ CO₂ + international) / Σ population",
+         f"({country_mt:,.0f} + {intl_mt:,.0f}) Mt / {country_pop / 1e9:.3f} bn", with_intl),
+        ("World row", "World CO₂ / World population",
+         f"{world['co2']:,.0f} Mt / {world['population'] / 1e9:.3f} bn", world_pc),
+    ], columns=["step", "formula", "inputs", "t_per_person"])
+    return {
+        "year": year, "n": int(len(cs)), "simple_mean": simple, "weighted_mean": weighted,
+        "with_international": with_intl, "world_per_capita": world_pc,
+        "country_co2_mt": country_mt, "country_population": country_pop, "international_mt": intl_mt,
+        "world_co2_mt": float(world["co2"]), "world_population": float(world["population"]),
+        "steps": steps,
+    }
+
+
 def per_capita_distribution(df: pd.DataFrame) -> dict:
     cs = data.cross_section(df, Y, ["co2_per_capita"])
     x = cs["co2_per_capita"]
@@ -97,8 +133,10 @@ def per_capita_distribution(df: pd.DataFrame) -> dict:
                     "median": ds.grouped_median(t), "mode": ds.grouped_mode(t),
                     "q1": ds.grouped_quantile(t, 1, 4), "q3": ds.grouped_quantile(t, 3, 4),
                     "std": ds.grouped_std(t)},
+        "grouped_vs_raw": ds.grouped_vs_raw(x, t),
         "population_weighted_mean": pop_weighted,
         "world_per_capita": world_pc,
+        "mean_comparison": per_capita_means(df),
         "by_continent": by_cont,
         "combined_mean_check": ds.combined_mean(by_cont["mean"], by_cont["count"]),
         "mean_excl_antarctica": float(cs.dropna(subset=["continent"])["co2_per_capita"].mean()),
@@ -329,10 +367,18 @@ def regression(df: pd.DataFrame) -> dict:
         "simple_mape_original": rg.mape(cs["co2_per_capita"], 10 ** simple["fitted"]),
         "multi_mape_original": rg.mape(cs["co2_per_capita"], 10 ** multi["fitted"]),
     }
+    # slide 32 "estimate for unknown values": a typical country at the sample-median GDP and energy per person
+    gdp0, en0 = float(cs["gdp_per_capita"].median()), float(cs["energy_per_capita"].median())
+    p1, p2 = rg.predict(simple, math.log10(gdp0)), rg.predict(multi, math.log10(gdp0), math.log10(en0))
+    prediction = {"gdp_per_capita": gdp0, "energy_per_capita": en0,
+                  "log_pred_simple": p1, "log_pred_multi": p2,
+                  "co2_pc_simple": 10 ** p1, "co2_pc_multi": 10 ** p2}
     X1, X2 = lx1.reshape(-1, 1), np.column_stack([lx1, lx2])
     return {
         "data": cs.assign(fitted_simple=10 ** simple["fitted"], fitted_multi=10 ** multi["fitted"]),
         "simple": simple, "multiple": multi, "back_transformed": back,
+        "comparison": rg.compare_models(simple, multi), "collinearity": multi["collinearity"],
+        "prediction": prediction,
         "cv_simple": rg.kfold_cv(X1, ly, k=5, seed=config.SEED),
         "cv_multi": rg.kfold_cv(X2, ly, k=5, seed=config.SEED),
         "holdout_multi": rg.holdout(X2, ly, seed=config.SEED),
