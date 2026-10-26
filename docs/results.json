@@ -5004,6 +5004,28 @@
    "t_slope": 27.404243,
    "t_critical": 1.974716,
    "p_slope": 0.0,
+   "slope_significant": true,
+   "sums": {
+    "Σx²": 45.827895,
+    "Σxy": 47.874625,
+    "Σy²": 60.801243
+   },
+   "r": 0.906952,
+   "r2": 0.822562,
+   "adj_r2": 0.821466,
+   "anova": {
+    "ss_regression": 50.012764,
+    "ss_error": 10.78848,
+    "ss_total": 60.801243,
+    "df_regression": 1,
+    "df_error": 162,
+    "ms_regression": 50.012764,
+    "ms_error": 0.066596
+   },
+   "F": 750.992545,
+   "F_critical": 3.899502,
+   "p_F": 0.0,
+   "F_decision": "Reject H0 (model significant)",
    "metrics": {
     "MAE": 0.200198,
     "MSE": 0.065783,
@@ -5040,7 +5062,18 @@
    "F_critical": 3.052172,
    "p_F": 0.0,
    "F_decision": "Reject H0 (model significant)",
+   "R": 0.975066,
    "r12": 0.942345,
+   "collinearity": {
+    "r12": 0.942345,
+    "r12_squared": 0.888014,
+    "tolerance": 0.111986,
+    "vif": 8.929704,
+    "se_inflation": 2.988261,
+    "threshold": 0.8,
+    "level": "high",
+    "flagged": true
+   },
    "t_critical": 1.974808,
    "coefficients": [
     {
@@ -5071,6 +5104,107 @@
   "back_transformed": {
    "simple_mape_original": 48.967408,
    "multi_mape_original": 23.691546
+  },
+  "comparison": {
+   "table": [
+    {
+     "metric": "n",
+     "simple": 164,
+     "multiple": 164
+    },
+    {
+     "metric": "R (multiple correlation)",
+     "simple": 0.906952,
+     "multiple": 0.975066
+    },
+    {
+     "metric": "R²",
+     "simple": 0.822562,
+     "multiple": 0.950755
+    },
+    {
+     "metric": "adjusted R²",
+     "simple": 0.821466,
+     "multiple": 0.950143
+    },
+    {
+     "metric": "F",
+     "simple": 750.992545,
+     "multiple": 1554.170232
+    },
+    {
+     "metric": "F critical (α = 0.05)",
+     "simple": 3.899502,
+     "multiple": 3.052172
+    },
+    {
+     "metric": "df (regression, error)",
+     "simple": "1, 162",
+     "multiple": "2, 161"
+    },
+    {
+     "metric": "SS regression",
+     "simple": 50.012764,
+     "multiple": 57.807061
+    },
+    {
+     "metric": "SS error",
+     "simple": 10.78848,
+     "multiple": 2.994182
+    },
+    {
+     "metric": "MS error",
+     "simple": 0.066596,
+     "multiple": 0.018597
+    },
+    {
+     "metric": "MAE",
+     "simple": 0.200198,
+     "multiple": 0.094309
+    },
+    {
+     "metric": "MSE",
+     "simple": 0.065783,
+     "multiple": 0.018257
+    },
+    {
+     "metric": "RMSE",
+     "simple": 0.256483,
+     "multiple": 0.135119
+    },
+    {
+     "metric": "MAPE",
+     "simple": 69.493303,
+     "multiple": 30.923878
+    }
+   ],
+   "delta_r2": 0.128193,
+   "delta_adj_r2": 0.128677,
+   "b1_simple": 1.044661,
+   "b1_multiple": -0.116659,
+   "b1_change_pct": -111.16717,
+   "b1_sign_flip": true,
+   "se_b1_simple": 0.03812,
+   "se_b1_multiple": 0.060198,
+   "b1_lost_significance": true
+  },
+  "collinearity": {
+   "r12": 0.942345,
+   "r12_squared": 0.888014,
+   "tolerance": 0.111986,
+   "vif": 8.929704,
+   "se_inflation": 2.988261,
+   "threshold": 0.8,
+   "level": "high",
+   "flagged": true
+  },
+  "prediction": {
+   "gdp_per_capita": 12605.767233,
+   "energy_per_capita": 14490.46,
+   "log_pred_simple": 0.414132,
+   "log_pred_multi": 0.457381,
+   "co2_pc_simple": 2.59497,
+   "co2_pc_multi": 2.866692
   },
   "cv_simple": {
    "k": 5,
@@ -8257,8 +8391,54 @@
     "t(b₂ energy)": "20.47, p = 1.1e-46 → significant"
    },
    "interpretation": "The model as a whole is highly significant (F-test first, as the slides require); individually only energy per person is significant at 5%.",
-   "validation": "SE and t match statsmodels (tests/test_cross_checks.py).",
+   "validation": "SE and t match statsmodels (tests/test_cross_checks.py). Course example: F = 64.37 vs F₀.₀₅(2, 5) = 5.79; t(b₁) = 3.753. Slide 40 copies b₁'s working for b₂; the correct values are SE = 0.976, t = −1.697 (still not significant).",
    "code": "src/co2ads/regression.py::multiple_regression_2"
+  },
+  {
+   "module": "M4 Regression",
+   "concept": "Goodness of fit & overfit: R, R², adjusted R² (simple vs multiple)",
+   "variables": "simple (X₁ = GDP) vs multiple (X₁ = GDP, X₂ = energy)",
+   "objective": "",
+   "formula": "R^2 = \\frac{b_1\\Sigma x_1y + b_2\\Sigma x_2y}{\\Sigma y^2},\\ \\ \\bar R^2 = 1-(1-R^2)\\frac{n-1}{n-k-1},\\ \\ R=\\sqrt{R^2}",
+   "output": {
+    "R² simple → multiple": "0.823 → 0.951 (Δ +0.128)",
+    "Adjusted R²": "0.821 → 0.950",
+    "F simple / multiple": "751.0 / 1,554.2",
+    "RMSE (log₁₀)": "0.256 → 0.135"
+   },
+   "interpretation": "Adjusted R² rises as well as R², so energy adds real explanatory power beyond the extra parameter. In the simple model F = t² of the slope.",
+   "validation": "Simple-model R², adjusted R², F and SSE match statsmodels; F = t² checked.",
+   "code": "src/co2ads/regression.py::compare_models"
+  },
+  {
+   "module": "M4 Regression",
+   "concept": "Overlap between predictors (multicollinearity flag)",
+   "variables": "X₁ = log₁₀ GDP pc, X₂ = log₁₀ energy pc",
+   "objective": "",
+   "formula": "\\text{tolerance}=1-r_{12}^2,\\ \\ VIF=\\frac{1}{1-r_{12}^2},\\ \\ SE(b_i)\\propto\\sqrt{VIF}",
+   "output": {
+    "r₁₂": "0.942",
+    "Tolerance / VIF": "0.112 / 8.93",
+    "Flag": "YES (high)",
+    "b₁ (GDP) alone → with energy": "1.045 → -0.117 (sign flips)"
+   },
+   "interpretation": "Only 11% of the variation in log GDP is not already carried by log energy, so the (1 − r₁₂²) term in SE(bᵢ) multiplies the standard errors by √VIF = 3.0. That is why GDP is significant alone but not alongside energy, and its sign flips. Fit and predictions are fine; only the split of credit between the two predictors is unreliable.",
+   "validation": "VIF matches statsmodels variance_inflation_factor; course example r₁₂ = −0.88 → VIF = 4.56.",
+   "code": "src/co2ads/regression.py::collinearity"
+  },
+  {
+   "module": "M4 Regression",
+   "concept": "Estimate for unknown values (prediction)",
+   "variables": "median country: GDP pc = 12,606 int-$, energy pc = 14,490 kWh",
+   "objective": "",
+   "formula": "\\hat Y = b_0 + b_1X_1 + b_2X_2,\\ \\ \\widehat{CO_2} = 10^{\\hat Y}",
+   "output": {
+    "Simple model": "2.59 t per person",
+    "Multiple model": "2.87 t per person"
+   },
+   "interpretation": "Predictions are made on the log₁₀ scale and converted back to tonnes.",
+   "validation": "Reproduces slide 32 (X₁ = 74, X₂ = 14 → Ŷ = 202.893).",
+   "code": "src/co2ads/regression.py::predict"
   },
   {
    "module": "M5 Anomaly Detection",

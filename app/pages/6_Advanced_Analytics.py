@@ -45,6 +45,12 @@ with t_reg:
         fig.add_scatter(x=xs, y=s["slope"] * xs + s["intercept"], mode="lines", line={"color": "#1d211e", "width": 3}, name="regression line")
         fig.update_layout(height=430)
         st.plotly_chart(fig, width="stretch")
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("R²", fmt(s["r2"], 4))
+        k2.metric("Adjusted R²", fmt(s["adj_r2"], 4))
+        k3.metric("F (overall)", fmt(s["F"], 1), f"crit {s['F_critical']:.2f} → {'significant' if s['F'] >= s['F_critical'] else 'not significant'}", delta_color="off")
+        k4.metric("SE(a)", fmt(s["se_slope"], 4), f"t crit {s['t_critical']:.3f}", delta_color="off")
+        st.caption(f"With one predictor F = t² ({s['t_slope']:.2f}² = {s['F']:.1f}), so the F-test and the slope t-test agree.")
         met = pd.DataFrame({"simple": s["metrics"], "multiple": m["metrics"]}).T
         met["MAPE (back in tonnes)"] = [rg.mape(cs["co2_per_capita"], 10 ** s["fitted"]), rg.mape(cs["co2_per_capita"], 10 ** m["fitted"])]
         st.markdown("#### Multiple regression (two predictors, course deviation-sum formulas)")
@@ -64,10 +70,44 @@ with t_reg:
         st.caption(f"t critical (α = 0.05, df = {an['df_error']}) = {m['t_critical']:.3f}. Test individual coefficients only after the F-test rejects H₀.")
         st.markdown("**Error measures** (MAE/MSE/RMSE on the log₁₀ scale)")
         st.dataframe(met.round(4), width="stretch")
-        if abs(m["r12"]) > 0.8:
-            note(f"Predictors are highly correlated (r₁₂ = {m['r12']:.2f}): <b>multicollinearity</b>. Each partial coefficient "
-                 "then measures an effect 'holding the other constant' for combinations that rarely occur, so standard errors "
-                 "grow and a predictor can look insignificant even though it is strongly related to y on its own.")
+
+        st.markdown("#### Simple vs multiple: every slide metric")
+        cmp = rg.compare_models(s, m)
+        st.dataframe(pd.DataFrame(cmp["table"]).set_index("metric")
+                     .map(lambda v: f"{v:,.4f}" if isinstance(v, float) else str(v)), width="stretch")
+        st.caption(f"Adding {label(x2)}: ΔR² = {cmp['delta_r2']:+.4f}, Δ adjusted R² = {cmp['delta_adj_r2']:+.4f} "
+                   "(adjusted R² rises only if the new predictor adds more than chance would).")
+
+        st.markdown("#### Overlap between the predictors (multicollinearity check)")
+        col = m["collinearity"]
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("r₁₂", fmt(col["r12"], 3))
+        k2.metric("Tolerance 1 − r₁₂²", fmt(col["tolerance"], 3))
+        k3.metric("VIF = 1 / tolerance", fmt(col["vif"], 2), "≥ 5 high · ≥ 10 severe", delta_color="off")
+        k4.metric(f"b₁ alone → with X₂", f"{cmp['b1_simple']:.3f} → {cmp['b1_multiple']:.3f}",
+                  "sign flipped" if cmp["b1_sign_flip"] else f"{cmp['b1_change_pct']:+.0f}%", delta_color="off")
+        msg = (f"(1 − r₁₂²) is the term in the slide formula SE(bᵢ) = √(MSE / (Σ(xᵢ − x̄ᵢ)²(1 − r₁₂²))). Here it multiplies the "
+               f"standard errors by √VIF = {col['se_inflation']:.2f}. Adding X₂ also lowers the error variance, so the net change in "
+               f"SE(b₁) is {cmp['se_b1_simple']:.4f} (simple) → {cmp['se_b1_multiple']:.4f} (multiple).")
+        if col["flagged"]:
+            st.warning(f"**Flag: the predictors overlap ({col['level']} multicollinearity, |r₁₂| = {abs(col['r12']):.2f} ≥ {col['threshold']}).** "
+                       f"{msg} Each partial coefficient then measures an effect 'holding the other constant' for combinations that "
+                       "rarely occur, so a predictor can look insignificant"
+                       + (" (as b₁ does here)" if cmp["b1_lost_significance"] else "")
+                       + " even though it is strongly related to y on its own. R², F and predictions are unaffected; only the split "
+                       "between b₁ and b₂ is unreliable.")
+        else:
+            note(f"No overlap flag (|r₁₂| = {abs(col['r12']):.2f} < {col['threshold']}). {msg}")
+
+        st.markdown("#### Estimate for unknown values (slide 32)")
+        c1, c2 = st.columns(2)
+        g0 = c1.number_input(label(x1), value=float(np.round(cs[x1].median(), 0)), min_value=0.0001, format="%.4g")
+        e0 = c2.number_input(label(x2), value=float(np.round(cs[x2].median(), 0)), min_value=0.0001, format="%.4g")
+        p1, p2 = rg.predict(s, np.log10(g0)), rg.predict(m, np.log10(g0), np.log10(e0))
+        k1, k2 = st.columns(2)
+        k1.metric("Simple model: CO₂ per person", f"{10 ** p1:.2f} t", f"log₁₀ ŷ = {p1:.4f}", delta_color="off")
+        k2.metric("Multiple model: CO₂ per person", f"{10 ** p2:.2f} t", f"log₁₀ ŷ = {p2:.4f}", delta_color="off")
+        st.caption("Defaults are the sample medians. Predictions are computed on the log₁₀ scale and converted back with 10^ŷ.")
         st.markdown("#### Model evaluation (Module 1): hold-out and k-fold cross-validation")
         k = st.slider("k folds", 3, 10, 5)
         X2 = np.column_stack([lx1, lx2])

@@ -386,7 +386,37 @@ def build(res: dict) -> list[dict]:
          "t(b₁ GDP)": f"{f(c1['t'], 2)}, p = {f(c1['p_value'], 3)} → {'significant' if c1['significant'] else 'not significant'}",
          "t(b₂ energy)": f"{f(c2['t'], 2)}, p = {c2['p_value']:.1e} → {'significant' if c2['significant'] else 'not significant'}"},
         "The model as a whole is highly significant (F-test first, as the slides require); individually only energy per person is significant at 5%.",
-        "SE and t match statsmodels (tests/test_cross_checks.py).", "src/co2ads/regression.py::multiple_regression_2")
+        "SE and t match statsmodels (tests/test_cross_checks.py). Course example: F = 64.37 vs F₀.₀₅(2, 5) = 5.79; t(b₁) = 3.753. "
+        "Slide 40 copies b₁'s working for b₂; the correct values are SE = 0.976, t = −1.697 (still not significant).",
+        "src/co2ads/regression.py::multiple_regression_2")
+    cmp, col, pr = reg["comparison"], reg["collinearity"], reg["prediction"]
+    add("M4 Regression", "Goodness of fit & overfit: R, R², adjusted R² (simple vs multiple)",
+        "simple (X₁ = GDP) vs multiple (X₁ = GDP, X₂ = energy)",
+        r"R^2 = \frac{b_1\Sigma x_1y + b_2\Sigma x_2y}{\Sigma y^2},\ \ \bar R^2 = 1-(1-R^2)\frac{n-1}{n-k-1},\ \ R=\sqrt{R^2}",
+        {"R² simple → multiple": f"{f(sm['r2'], 3)} → {f(mm['r2'], 3)} (Δ {cmp['delta_r2']:+.3f})",
+         "Adjusted R²": f"{f(sm['adj_r2'], 3)} → {f(mm['adj_r2'], 3)}",
+         "F simple / multiple": f"{f(sm['F'], 1)} / {f(mm['F'], 1)}",
+         "RMSE (log₁₀)": f"{f(sm['metrics']['RMSE'], 3)} → {f(mm['metrics']['RMSE'], 3)}"},
+        "Adjusted R² rises as well as R², so energy adds real explanatory power beyond the extra parameter. In the simple model F = t² of the slope.",
+        "Simple-model R², adjusted R², F and SSE match statsmodels; F = t² checked.", "src/co2ads/regression.py::compare_models")
+    add("M4 Regression", "Overlap between predictors (multicollinearity flag)",
+        "X₁ = log₁₀ GDP pc, X₂ = log₁₀ energy pc",
+        r"\text{tolerance}=1-r_{12}^2,\ \ VIF=\frac{1}{1-r_{12}^2},\ \ SE(b_i)\propto\sqrt{VIF}",
+        {"r₁₂": f(col["r12"], 3), "Tolerance / VIF": f"{f(col['tolerance'], 3)} / {f(col['vif'], 2)}",
+         "Flag": f"{'YES' if col['flagged'] else 'no'} ({col['level']})",
+         "b₁ (GDP) alone → with energy": f"{f(cmp['b1_simple'], 3)} → {f(cmp['b1_multiple'], 3)}"
+                                        + (" (sign flips)" if cmp["b1_sign_flip"] else "")},
+        f"Only {f(col['tolerance'] * 100, 0)}% of the variation in log GDP is not already carried by log energy, so the (1 − r₁₂²) term in SE(bᵢ) "
+        f"multiplies the standard errors by √VIF = {f(col['se_inflation'], 1)}. That is why GDP is significant alone but not alongside energy, and its sign flips. "
+        "Fit and predictions are fine; only the split of credit between the two predictors is unreliable.",
+        "VIF matches statsmodels variance_inflation_factor; course example r₁₂ = −0.88 → VIF = 4.56.",
+        "src/co2ads/regression.py::collinearity")
+    add("M4 Regression", "Estimate for unknown values (prediction)",
+        f"median country: GDP pc = {f(pr['gdp_per_capita'], 0)} int-$, energy pc = {f(pr['energy_per_capita'], 0)} kWh",
+        r"\hat Y = b_0 + b_1X_1 + b_2X_2,\ \ \widehat{CO_2} = 10^{\hat Y}",
+        {"Simple model": f"{f(pr['co2_pc_simple'])} t per person", "Multiple model": f"{f(pr['co2_pc_multi'])} t per person"},
+        "Predictions are made on the log₁₀ scale and converted back to tonnes.",
+        "Reproduces slide 32 (X₁ = 74, X₂ = 14 → Ŷ = 202.893).", "src/co2ads/regression.py::predict")
 
     # ------------------------------------------------------------------ Module 5
     top_l = lof["table"].head(5)

@@ -8,6 +8,10 @@ Every number in the dashboard, report, slides and viva guide is computed from th
 
 Requires [uv](https://docs.astral.sh/uv/) (it installs Python 3.12 automatically).
 
+One command (macOS/Linux: `./run.sh`; Windows: double-click `run.bat` or `bash run.sh` in Git Bash) regenerates the results, starts the dashboard at http://localhost:8501 and serves the viva guide at http://localhost:8000/viva_guide.html. Options: `--skip-export`, `--open`; ports via `APP_PORT` / `DOCS_PORT`. Ctrl+C stops everything.
+
+Or step by step:
+
 ```bash
 uv sync                                  # create .venv with pinned dependencies (uv.lock)
 uv run pytest                            # 56 tests (course examples, library cross-checks, data checks, every app page)

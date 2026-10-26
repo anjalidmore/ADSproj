@@ -134,7 +134,7 @@ The pipeline keeps three layers: **raw** (never modified), **clean** (every raw 
 
 ## 3.3 Tools and validation
 
-Python 3.12 with pandas, NumPy and SciPy (for critical values and p-values, i.e. the "tables"), Plotly and Streamlit; statsmodels and scikit-learn are used only as independent cross-checks. All formulas are written by hand following the course formula sheet, for example quartiles at the k(N+1)/4 position and multiple regression from deviation sums. An automated test suite of 56 tests checks that:
+Python 3.12 with pandas, NumPy and SciPy (for critical values and p-values, i.e. the "tables"), Plotly and Streamlit; statsmodels and scikit-learn are used only as independent cross-checks. All formulas are written by hand following the course formula sheet, for example quartiles at the k(N+1)/4 position and multiple regression from deviation sums. An automated test suite of 60 tests checks that:
 
 - every formula reproduces the worked examples in the course slides (one-sample, independent and paired t-tests, z-test, confidence intervals, one-way ANOVA, multiple regression, simple regression, LOF, additive and multiplicative decomposition, forecast error measures, Poisson, and the Module 2 discrete-series, grouped-quartile, open-end-class, corrected-mean and cumulative-frequency examples);
 - every formula agrees with an independent library implementation (NumPy, SciPy, statsmodels, scikit-learn);
@@ -344,7 +344,20 @@ log₁₀ CO₂pc = {f(mm['b0'], 4)} {mm['b1']:+.4f} · log₁₀ GDPpc {mm['b2'
 
 *Table 8: Multiple regression results ({G}).*
 
-Following the course procedure, the overall F-test is applied first. It rejects H₀ (b₁ = b₂ = 0), so the individual coefficients are then tested. Energy per person is highly significant. GDP becomes **not significant** (p = {f(c1['p_value'], 3)}), and its sign even turns slightly negative. The reason is **multicollinearity**: GDP and energy per person are correlated at r₁₂ = {f(mm['r12'], 2)}, so the model cannot separate their effects. The economic reading is that income is associated with emissions mainly *through* energy use. Energy and CO₂ are also partly the same quantity, since most energy is fossil, so the high R² is partly by construction and is not evidence of a causal mechanism.
+| Metric | Simple (GDP) | Multiple (GDP + energy) |
+|---|---:|---:|
+| R / R² | {f(abs(sm['r']), 3)} / {f(sm['r2'], 4)} | {f(mm['R'], 3)} / {f(mm['r2'], 4)} |
+| Adjusted R² | {f(sm['adj_r2'], 4)} | {f(mm['adj_r2'], 4)} |
+| F (df) | {f(sm['F'], 1)} (1, {sm['anova']['df_error']}) | {f(mm['F'], 1)} (2, {mm['anova']['df_error']}) |
+| SS regression / SS error | {f(sm['anova']['ss_regression'], 3)} / {f(sm['anova']['ss_error'], 3)} | {f(mm['anova']['ss_regression'], 3)} / {f(mm['anova']['ss_error'], 3)} |
+| MAE / MSE / RMSE (log₁₀) | {f(sm['metrics']['MAE'], 3)} / {f(sm['metrics']['MSE'], 3)} / {f(sm['metrics']['RMSE'], 3)} | {f(mm['metrics']['MAE'], 3)} / {f(mm['metrics']['MSE'], 3)} / {f(mm['metrics']['RMSE'], 3)} |
+| MAPE (log₁₀ / tonnes) | {f(sm['metrics']['MAPE'], 1)}% / {f(reg['back_transformed']['simple_mape_original'], 1)}% | {f(mm['metrics']['MAPE'], 1)}% / {f(reg['back_transformed']['multi_mape_original'], 1)}% |
+| b₁ (GDP): coefficient, SE, t | {f(sm['slope'], 3)}, {f(sm['se_slope'], 4)}, {f(sm['t_slope'], 2)} | {f(mm['b1'], 3)}, {f(c1['se'], 4)}, {f(c1['t'], 2)} |
+| Prediction for the median country | {f(reg['prediction']['co2_pc_simple'])} t | {f(reg['prediction']['co2_pc_multi'])} t |
+
+*Table 9: Simple vs multiple regression, every metric from the Module 4 slides ({G}). The median country has GDP {f(reg['prediction']['gdp_per_capita'], 0)} int-$ and energy use {f(reg['prediction']['energy_per_capita'], 0)} kWh per person.*
+
+Following the course procedure, the overall F-test is applied first. It rejects H₀ (b₁ = b₂ = 0), so the individual coefficients are then tested. Energy per person is highly significant. GDP becomes **not significant** (p = {f(c1['p_value'], 3)}), and its sign even turns slightly negative. The reason is **multicollinearity**, which the analysis flags automatically: GDP and energy per person are correlated at r₁₂ = {f(mm['r12'], 2)}, the tolerance 1 − r₁₂² is only {f(reg['collinearity']['tolerance'], 3)} and VIF = {f(reg['collinearity']['vif'], 1)}. The (1 − r₁₂²) term in the slide formula for SE(bᵢ) therefore multiplies the standard errors by √VIF = {f(reg['collinearity']['se_inflation'], 1)}. Adding energy also shrinks the error variance, so the net effect on GDP's standard error is {f(sm['se_slope'], 4)} → {f(c1['se'], 4)}, while its coefficient collapses from {f(sm['slope'], 3)} to {f(mm['b1'], 3)}. The model cannot separate the two effects. R², F and the predictions are not affected. The economic reading is that income is associated with emissions mainly *through* energy use. Energy and CO₂ are also partly the same quantity, since most energy is fossil, so the high R² is partly by construction and is not evidence of a causal mechanism.
 
 **Model evaluation (Module 1).** On a 2/3 : 1/3 hold-out split ({reg['holdout_multi']['n_train']} / {reg['holdout_multi']['n_test']} countries), test R² = {f(reg['holdout_multi']['test']['R2'], 3)}. With 5-fold cross-validation, mean validation R² = {f(reg['cv_multi']['mean']['R2'], 3)} for the multiple model and {f(reg['cv_simple']['mean']['R2'], 3)} for the simple model. Validation scores are close to the in-sample ones, so neither model overfits. MAPE is reported after back-transforming to tonnes, because on the log scale values near zero make MAPE meaningless (a limitation the slides note).
 
@@ -356,7 +369,7 @@ LOF was implemented step by step as in Module 5: Manhattan distance → k-distan
 
 """ + table(lof["table"][:8], [("country", "Country", None), ("continent", "Continent", None), ("gdp_per_capita", "GDP pc ($)", 0), ("co2_per_capita", "CO₂ pc (t)", 2), ("lof", "LOF", 3)]) + f"""
 
-*Table 9: Highest LOF scores.*
+*Table 10: Highest LOF scores.*
 
 Unlike the one-dimensional IQR rule, which flagged only high emitters, LOF is local and two-dimensional. It flags Qatar (extreme on both axes), but also countries whose emissions are unusual *for their income*: rich low-carbon economies (Norway, Switzerland, Sweden, Singapore), very poor countries with almost no fossil-fuel use (Burundi, DR Congo), and North Korea (high CO₂ for its very low recorded GDP). Of LOF's top ten, only {', '.join(lof['lof_top10_also_iqr'])} were also IQR outliers. The two methods answer different questions.
 
@@ -370,7 +383,7 @@ Unlike the one-dimensional IQR rule, which flagged only high emitters, LOF is lo
 
 """ + table(ts["comparison"], [("method", "Method", None), ("MAE", "MAE (Mt)", 0), ("RMSE", "RMSE (Mt)", 0), ("MAPE", "MAPE (%)", 2), ("MASE", "MASE", 2)]) + f"""
 
-*Table 10: Forecast accuracy on 2020–{Y}.*
+*Table 11: Forecast accuracy on 2020–{Y}.*
 
 The average method is useless for a trending series ({f(ts['comparison'][0]['MAPE'], 0)}% error), exactly as the slides warn: old values never leave the average. The 2000–2019 trend line (slope {f(ts['trend_fit_train']['slope'], 0)} Mt per year, R² = {f(ts['trend_fit_train']['r2'], 3)}) overshoots because growth slowed after about 2013 and 2020 fell sharply. The best method by MASE was **{best_ts['method']}**. All MASE values exceed 1, so over these five volatile years no method beat simply carrying last year's value forward. Fitting the trend on 2000–{Y} gives a slope of {f(ts['trend_full']['slope'], 0)} Mt per year. Mechanically extended to 2030 that implies about {f(ts['projection']['2030'] / 1000, 1)} Gt, but this is an extrapolation, not a prediction: it ignores policy and technology change.
 
@@ -380,7 +393,7 @@ The average method is useless for a trending series ({f(ts['comparison'][0]['MAP
 - **Independent cross-checks:** quantiles (NumPy), moments and kurtosis (SciPy), t-tests and one-way ANOVA (SciPy), two-way ANOVA and regression including standard errors (statsmodels), LOF (scikit-learn).
 - **Data integrity:** raw file hash, 50,411 × 79 shape, unique keys, entity classification, World reconciliation, and no imputed values (tests in `tests/test_data.py`).
 - **Consistency:** the dashboard, this report, the slides and the viva guide all read numbers from the same `results.py` code, so tables, charts and text cannot disagree.
-- **Errors in course material found and handled:** kurtosis shape labels swapped on the formula sheet; ANOVA grand mean as an unweighted mean of means; the Module 4 slide on b₂ reuses b₁'s numbers; the Module 2 "median from cumulative data" example uses i = 10 for classes 5 wide and prints 14.29 instead of 12.15.
+- **Errors in course material found and handled:** kurtosis shape labels swapped on the formula sheet; ANOVA grand mean as an unweighted mean of means; the Module 4 slide on b₂ reuses b₁'s numbers (correct: SE(b₂) = 0.976, t = −1.697, still not significant), and slide 30 substitutes Σx₂y = −683.5 instead of −953.5 although its printed b₂ = −1.6561 is right; the Module 2 "median from cumulative data" example uses i = 10 for classes 5 wide and prints 14.29 instead of 12.15.
 
 # 11. Discussion and limitations
 

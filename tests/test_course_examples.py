@@ -80,6 +80,23 @@ def test_multiple_regression_example():  # Module 4 slides 26–39
     assert r["coefficients"][0]["t"] == pytest.approx(3.756, abs=0.01)
     assert r["coefficients"][0]["significant"]
     assert r["b0"] + r["b1"] * 74 + r["b2"] * 14 == pytest.approx(202.89, abs=0.01)
+    assert rg.predict(r, 74, 14) == pytest.approx(202.893, abs=0.01)  # slide 32
+    an = r["anova"]  # slide 36 ANOVA table
+    assert an["ss_total"] == pytest.approx(5442)
+    assert an["ss_regression"] == pytest.approx(5238.56, abs=0.1)
+    assert an["ss_error"] == pytest.approx(203.44, abs=0.1)
+    assert an["ms_error"] == pytest.approx(40.69, abs=0.01)
+    assert r["F_critical"] == pytest.approx(5.79, abs=0.01)
+    assert r["t_critical"] == pytest.approx(2.571, abs=0.001)
+    # Slide 40 copies b1's numbers; the correct b2 test is SE = 0.976, t = −1.697 → not significant
+    # (the slide's conclusion, t ≈ −1.72 < 2.571, is unchanged).
+    assert r["coefficients"][1]["se"] == pytest.approx(0.976, abs=0.001)
+    assert r["coefficients"][1]["t"] == pytest.approx(-1.697, abs=0.001)
+    assert not r["coefficients"][1]["significant"]
+    col = r["collinearity"]  # r12 = −0.88 → the (1 − r12²) term in SE(b_i)
+    assert col["tolerance"] == pytest.approx(1 - 0.8836 ** 2, abs=1e-3)
+    assert col["vif"] == pytest.approx(4.56, abs=0.01)
+    assert col["flagged"]
 
 
 def test_simple_regression_expenditure_example():  # Module 6 slides 54–59

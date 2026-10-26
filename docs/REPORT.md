@@ -7,7 +7,7 @@ date: "[Course name · Instructor · Submission date]"
 
 # Abstract
 
-This project applies the full Applied Data Science (ADS) syllabus — the data science process, descriptive statistics, multivariate exploration, inferential statistics, regression, anomaly detection and time-series analysis — to a real dataset of 50,411 country-year observations: the Our World in Data (OWID) CO₂ and Greenhouse Gas Emissions dataset (79 variables, 1750–2024). After separating 219 countries from regional aggregates to avoid double counting, we find that world fossil and industry CO₂ emissions reached a record 38.6 Gt in 2024, 70% above 1990, and that three countries emit 53% of the total. Emissions per person are extremely unequal and right-skewed (mean 4.63 t, median 3.21 t, kurtosis β₂ = 14.1), and close to log-normal. Continents differ significantly (one-way ANOVA F = 30.9, p < 0.001), and the average country's per-person emissions fell between 2005 and 2024 (paired t = -2.86, p = 0.005). Across countries, log GDP per person and log CO₂ per person are strongly correlated (r = 0.907). Adding energy use per person raises R² to 0.951, and GDP then becomes non-significant: the relationship runs through energy use. All 53 implemented concepts are validated against the course's worked examples and independent library implementations in an automated test suite, and are presented in an interactive Streamlit dashboard.
+This project applies the full Applied Data Science (ADS) syllabus — the data science process, descriptive statistics, multivariate exploration, inferential statistics, regression, anomaly detection and time-series analysis — to a real dataset of 50,411 country-year observations: the Our World in Data (OWID) CO₂ and Greenhouse Gas Emissions dataset (79 variables, 1750–2024). After separating 219 countries from regional aggregates to avoid double counting, we find that world fossil and industry CO₂ emissions reached a record 38.6 Gt in 2024, 70% above 1990, and that three countries emit 53% of the total. Emissions per person are extremely unequal and right-skewed (mean 4.63 t, median 3.21 t, kurtosis β₂ = 14.1), and close to log-normal. Continents differ significantly (one-way ANOVA F = 30.9, p < 0.001), and the average country's per-person emissions fell between 2005 and 2024 (paired t = -2.86, p = 0.005). Across countries, log GDP per person and log CO₂ per person are strongly correlated (r = 0.907). Adding energy use per person raises R² to 0.951, and GDP then becomes non-significant: the relationship runs through energy use. All 56 implemented concepts are validated against the course's worked examples and independent library implementations in an automated test suite, and are presented in an interactive Streamlit dashboard.
 
 # 1. Introduction
 
@@ -81,7 +81,7 @@ The pipeline keeps three layers: **raw** (never modified), **clean** (every raw 
 
 ## 3.3 Tools and validation
 
-Python 3.12 with pandas, NumPy and SciPy (for critical values and p-values, i.e. the "tables"), Plotly and Streamlit; statsmodels and scikit-learn are used only as independent cross-checks. All formulas are written by hand following the course formula sheet, for example quartiles at the k(N+1)/4 position and multiple regression from deviation sums. An automated test suite of 56 tests checks that:
+Python 3.12 with pandas, NumPy and SciPy (for critical values and p-values, i.e. the "tables"), Plotly and Streamlit; statsmodels and scikit-learn are used only as independent cross-checks. All formulas are written by hand following the course formula sheet, for example quartiles at the k(N+1)/4 position and multiple regression from deviation sums. An automated test suite of 60 tests checks that:
 
 - every formula reproduces the worked examples in the course slides (one-sample, independent and paired t-tests, z-test, confidence intervals, one-way ANOVA, multiple regression, simple regression, LOF, additive and multiplicative decomposition, forecast error measures, Poisson, and the Module 2 discrete-series, grouped-quartile, open-end-class, corrected-mean and cumulative-frequency examples);
 - every formula agrees with an independent library implementation (NumPy, SciPy, statsmodels, scikit-learn);
@@ -330,7 +330,20 @@ log₁₀ CO₂pc = -3.1686 -0.1167 · log₁₀ GDPpc +0.9864 · log₁₀ Ener
 
 *Table 8: Multiple regression results (2022).*
 
-Following the course procedure, the overall F-test is applied first. It rejects H₀ (b₁ = b₂ = 0), so the individual coefficients are then tested. Energy per person is highly significant. GDP becomes **not significant** (p = 0.054), and its sign even turns slightly negative. The reason is **multicollinearity**: GDP and energy per person are correlated at r₁₂ = 0.94, so the model cannot separate their effects. The economic reading is that income is associated with emissions mainly *through* energy use. Energy and CO₂ are also partly the same quantity, since most energy is fossil, so the high R² is partly by construction and is not evidence of a causal mechanism.
+| Metric | Simple (GDP) | Multiple (GDP + energy) |
+|---|---:|---:|
+| R / R² | 0.907 / 0.8226 | 0.975 / 0.9508 |
+| Adjusted R² | 0.8215 | 0.9501 |
+| F (df) | 751.0 (1, 162) | 1,554.2 (2, 161) |
+| SS regression / SS error | 50.013 / 10.788 | 57.807 / 2.994 |
+| MAE / MSE / RMSE (log₁₀) | 0.200 / 0.066 / 0.256 | 0.094 / 0.018 / 0.135 |
+| MAPE (log₁₀ / tonnes) | 69.5% / 49.0% | 30.9% / 23.7% |
+| b₁ (GDP): coefficient, SE, t | 1.045, 0.0381, 27.40 | -0.117, 0.0602, -1.94 |
+| Prediction for the median country | 2.59 t | 2.87 t |
+
+*Table 9: Simple vs multiple regression, every metric from the Module 4 slides (2022). The median country has GDP 12,606 int-$ and energy use 14,490 kWh per person.*
+
+Following the course procedure, the overall F-test is applied first. It rejects H₀ (b₁ = b₂ = 0), so the individual coefficients are then tested. Energy per person is highly significant. GDP becomes **not significant** (p = 0.054), and its sign even turns slightly negative. The reason is **multicollinearity**, which the analysis flags automatically: GDP and energy per person are correlated at r₁₂ = 0.94, the tolerance 1 − r₁₂² is only 0.112 and VIF = 8.9. The (1 − r₁₂²) term in the slide formula for SE(bᵢ) therefore multiplies the standard errors by √VIF = 3.0. Adding energy also shrinks the error variance, so the net effect on GDP's standard error is 0.0381 → 0.0602, while its coefficient collapses from 1.045 to -0.117. The model cannot separate the two effects. R², F and the predictions are not affected. The economic reading is that income is associated with emissions mainly *through* energy use. Energy and CO₂ are also partly the same quantity, since most energy is fossil, so the high R² is partly by construction and is not evidence of a causal mechanism.
 
 **Model evaluation (Module 1).** On a 2/3 : 1/3 hold-out split (109 / 55 countries), test R² = 0.938. With 5-fold cross-validation, mean validation R² = 0.946 for the multiple model and 0.803 for the simple model. Validation scores are close to the in-sample ones, so neither model overfits. MAPE is reported after back-transforming to tonnes, because on the log scale values near zero make MAPE meaningless (a limitation the slides note).
 
@@ -351,7 +364,7 @@ LOF was implemented step by step as in Module 5: Manhattan distance → k-distan
 | Democratic Republic of Congo | Africa | 892 | 0.06 | 1.494 |
 | Central African Republic | Africa | 736 | 0.07 | 1.488 |
 
-*Table 9: Highest LOF scores.*
+*Table 10: Highest LOF scores.*
 
 Unlike the one-dimensional IQR rule, which flagged only high emitters, LOF is local and two-dimensional. It flags Qatar (extreme on both axes), but also countries whose emissions are unusual *for their income*: rich low-carbon economies (Norway, Switzerland, Sweden, Singapore), very poor countries with almost no fossil-fuel use (Burundi, DR Congo), and North Korea (high CO₂ for its very low recorded GDP). Of LOF's top ten, only Qatar, Trinidad and Tobago were also IQR outliers. The two methods answer different questions.
 
@@ -370,7 +383,7 @@ Unlike the one-dimensional IQR rule, which flagged only high emitters, LOF is lo
 | Naïve (last value) | 1,074 | 1,237 | 2.93 | 2.08 |
 | Linear trend (2000–2019) | 2,805 | 2,836 | 7.57 | 5.43 |
 
-*Table 10: Forecast accuracy on 2020–2024.*
+*Table 11: Forecast accuracy on 2020–2024.*
 
 The average method is useless for a trending series (44% error), exactly as the slides warn: old values never leave the average. The 2000–2019 trend line (slope 632 Mt per year, R² = 0.950) overshoots because growth slowed after about 2013 and 2020 fell sharply. The best method by MASE was **Naïve (last value)**. All MASE values exceed 1, so over these five volatile years no method beat simply carrying last year's value forward. Fitting the trend on 2000–2024 gives a slope of 526 Mt per year. Mechanically extended to 2030 that implies about 42.6 Gt, but this is an extrapolation, not a prediction: it ignores policy and technology change.
 
@@ -380,7 +393,7 @@ The average method is useless for a trending series (44% error), exactly as the 
 - **Independent cross-checks:** quantiles (NumPy), moments and kurtosis (SciPy), t-tests and one-way ANOVA (SciPy), two-way ANOVA and regression including standard errors (statsmodels), LOF (scikit-learn).
 - **Data integrity:** raw file hash, 50,411 × 79 shape, unique keys, entity classification, World reconciliation, and no imputed values (tests in `tests/test_data.py`).
 - **Consistency:** the dashboard, this report, the slides and the viva guide all read numbers from the same `results.py` code, so tables, charts and text cannot disagree.
-- **Errors in course material found and handled:** kurtosis shape labels swapped on the formula sheet; ANOVA grand mean as an unweighted mean of means; the Module 4 slide on b₂ reuses b₁'s numbers; the Module 2 "median from cumulative data" example uses i = 10 for classes 5 wide and prints 14.29 instead of 12.15.
+- **Errors in course material found and handled:** kurtosis shape labels swapped on the formula sheet; ANOVA grand mean as an unweighted mean of means; the Module 4 slide on b₂ reuses b₁'s numbers (correct: SE(b₂) = 0.976, t = −1.697, still not significant), and slide 30 substitutes Σx₂y = −683.5 instead of −953.5 although its printed b₂ = −1.6561 is right; the Module 2 "median from cumulative data" example uses i = 10 for classes 5 wide and prints 14.29 instead of 12.15.
 
 # 11. Discussion and limitations
 
@@ -460,6 +473,9 @@ Possible extensions: consumption-based vs territorial emissions; decomposing cha
 | M4 Regression | Error measures: MAE, MSE, RMSE, MAPE, R² | `src/co2ads/regression.py::all_metrics` |
 | M4 Regression | Multiple linear regression & partial regression coefficients | `src/co2ads/regression.py::multiple_regression_2` |
 | M4 Regression | Overall significance (F-test) & individual coefficients (t-test) | `src/co2ads/regression.py::multiple_regression_2` |
+| M4 Regression | Goodness of fit & overfit: R, R², adjusted R² (simple vs multiple) | `src/co2ads/regression.py::compare_models` |
+| M4 Regression | Overlap between predictors (multicollinearity flag) | `src/co2ads/regression.py::collinearity` |
+| M4 Regression | Estimate for unknown values (prediction) | `src/co2ads/regression.py::predict` |
 | M5 Anomaly Detection | Local Outlier Factor (Manhattan distance) | `src/co2ads/lof.py::lof` |
 | M6 Time Series | Components & classical decomposition | `src/co2ads/timeseries.py::classical_decomposition, centred_moving_average` |
 | M6 Time Series | Average, moving-average & naïve forecasts; least-squares trend | `src/co2ads/timeseries.py::holdout_comparison` |

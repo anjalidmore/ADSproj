@@ -630,8 +630,45 @@ Generated from `src/co2ads/concepts.py` by `scripts/export_results.py`. All numb
     - t(b₁ GDP): -1.94, p = 0.054 → not significant
     - t(b₂ energy): 20.47, p = 1.1e-46 → significant
 - **Interpretation:** The model as a whole is highly significant (F-test first, as the slides require); individually only energy per person is significant at 5%.
-- **Validation:** SE and t match statsmodels (tests/test_cross_checks.py).
+- **Validation:** SE and t match statsmodels (tests/test_cross_checks.py). Course example: F = 64.37 vs F₀.₀₅(2, 5) = 5.79; t(b₁) = 3.753. Slide 40 copies b₁'s working for b₂; the correct values are SE = 0.976, t = −1.697 (still not significant).
 - **Code:** `src/co2ads/regression.py::multiple_regression_2`
+
+### Goodness of fit & overfit: R, R², adjusted R² (simple vs multiple)
+
+- **Variables:** simple (X₁ = GDP) vs multiple (X₁ = GDP, X₂ = energy)
+- **Formula:** $R^2 = \frac{b_1\Sigma x_1y + b_2\Sigma x_2y}{\Sigma y^2},\ \ \bar R^2 = 1-(1-R^2)\frac{n-1}{n-k-1},\ \ R=\sqrt{R^2}$
+- **Computed output:**
+    - R² simple → multiple: 0.823 → 0.951 (Δ +0.128)
+    - Adjusted R²: 0.821 → 0.950
+    - F simple / multiple: 751.0 / 1,554.2
+    - RMSE (log₁₀): 0.256 → 0.135
+- **Interpretation:** Adjusted R² rises as well as R², so energy adds real explanatory power beyond the extra parameter. In the simple model F = t² of the slope.
+- **Validation:** Simple-model R², adjusted R², F and SSE match statsmodels; F = t² checked.
+- **Code:** `src/co2ads/regression.py::compare_models`
+
+### Overlap between predictors (multicollinearity flag)
+
+- **Variables:** X₁ = log₁₀ GDP pc, X₂ = log₁₀ energy pc
+- **Formula:** $\text{tolerance}=1-r_{12}^2,\ \ VIF=\frac{1}{1-r_{12}^2},\ \ SE(b_i)\propto\sqrt{VIF}$
+- **Computed output:**
+    - r₁₂: 0.942
+    - Tolerance / VIF: 0.112 / 8.93
+    - Flag: YES (high)
+    - b₁ (GDP) alone → with energy: 1.045 → -0.117 (sign flips)
+- **Interpretation:** Only 11% of the variation in log GDP is not already carried by log energy, so the (1 − r₁₂²) term in SE(bᵢ) multiplies the standard errors by √VIF = 3.0. That is why GDP is significant alone but not alongside energy, and its sign flips. Fit and predictions are fine; only the split of credit between the two predictors is unreliable.
+- **Validation:** VIF matches statsmodels variance_inflation_factor; course example r₁₂ = −0.88 → VIF = 4.56.
+- **Code:** `src/co2ads/regression.py::collinearity`
+
+### Estimate for unknown values (prediction)
+
+- **Variables:** median country: GDP pc = 12,606 int-$, energy pc = 14,490 kWh
+- **Formula:** $\hat Y = b_0 + b_1X_1 + b_2X_2,\ \ \widehat{CO_2} = 10^{\hat Y}$
+- **Computed output:**
+    - Simple model: 2.59 t per person
+    - Multiple model: 2.87 t per person
+- **Interpretation:** Predictions are made on the log₁₀ scale and converted back to tonnes.
+- **Validation:** Reproduces slide 32 (X₁ = 74, X₂ = 14 → Ŷ = 202.893).
+- **Code:** `src/co2ads/regression.py::predict`
 
 ## M5 Anomaly Detection
 

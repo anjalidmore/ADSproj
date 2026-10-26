@@ -101,6 +101,24 @@ def test_regression_matches_lstsq_and_statsmodels():
     f1 = sm.OLS(Y, sm.add_constant(X)).fit()
     assert [s["intercept"], s["slope"]] == pytest.approx(f1.params)
     assert s["se_slope"] == pytest.approx(f1.bse[1])
+    assert s["r2"] == pytest.approx(f1.rsquared)
+    assert s["adj_r2"] == pytest.approx(f1.rsquared_adj)
+    assert s["F"] == pytest.approx(f1.fvalue)
+    assert s["F"] == pytest.approx(s["t_slope"] ** 2)  # one predictor: F = t²
+    assert s["anova"]["ss_error"] == pytest.approx(f1.ssr)
+    assert s["metrics"]["MSE"] == pytest.approx(f1.ssr / X.size)
+
+
+def test_collinearity_matches_statsmodels_vif():
+    from statsmodels.stats.outliers_influence import variance_inflation_factor
+    x2 = 0.9 * X + rng.normal(scale=0.5, size=X.size)
+    r = rg.multiple_regression_2(X, x2, Y)
+    exog = sm.add_constant(np.column_stack([X, x2]))
+    assert r["collinearity"]["vif"] == pytest.approx(variance_inflation_factor(exog, 1))
+    assert r["collinearity"]["vif"] == pytest.approx(variance_inflation_factor(exog, 2))
+    assert r["R"] ** 2 == pytest.approx(r["r2"])
+    cmp = rg.compare_models(rg.simple_regression(X, Y), r)
+    assert cmp["delta_r2"] >= 0  # adding a predictor never lowers R²
 
 
 def test_lof_matches_sklearn_on_continuous_data():
